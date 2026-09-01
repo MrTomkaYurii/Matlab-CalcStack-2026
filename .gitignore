@@ -1,0 +1,4 @@
+# Large MATLAB data dumps (exceed GitHub's 100 MB limit)
+final_combined_structure.mat
+*.mat
+!plotly/plotly/plotly_help_aux/plotly_reference.mat
