@@ -203,8 +203,8 @@ removes the `phase_XX` level (algorithm folders sit directly under
 `core/tp_collect_sample_for_horsky.m` reads whatever `result.mat` already
 exist on disk for ONE sample (never recomputes), and writes a SEPARATE
 `.mat` per example × algorithm (examples 1/2/3 are never merged into one
-file) into `CFG.paths.horskyRoot` (`C:\August 2026-Results\Дані матриці
-Мюллера (Горському)`) — module/argument distributions only, no PNGs, for
+file) into `CFG.paths.horskyRoot` (`C:\August 2026-Results\MOD-ARGS-MM-Горському`)
+— module/argument distributions only, no PNGs, for
 handing off to M. Horsky's multifractal-spectrum analysis:
 
 ```

@@ -2,32 +2,38 @@ function run_TwoPoint_Analytics(cfgOverride, force)
 % RUN_TWOPOINT_ANALYTICS  Уся аналітика ОДНИМ запуском: збирає числові
 %   зведення з готових result.mat -> будує читабельні графіки за
 %   СКФ-триадою (статистика/кореляція/фрактал), ОКРЕМО ПО КОЖНОМУ
-%   АЛГОРИТМУ (кожен у своїй теці). НІЧОГО не рахує в самих f_ik —
-%   result.mat лише читаються.
+%   АЛГОРИТМУ (кожен у своїй теці, БЕЗ жодного спільного файлу зверху).
+%   НІЧОГО не рахує в самих f_ik — result.mat лише читаються.
 %
 %   Два етапи всередині:
 %     (1) "дорахунок" зведення — для КОЖНОГО елемента f_ik за КОЖНОЇ умови
 %         (зразок x приклад x фазове вікно x алгоритм x напрям/крок) рахує
 %         статистику + ACF HWHM + мультифрактал (D0/D1/D2, ширина/асиметрія
-%         f(h)). Це важка частина (CWT на елемент). Результат кешується в
-%         CFG.paths.analyticsRoot\analytics_summary_table.mat (+ .csv):
-%         одна СПІЛЬНА довга таблиця з колонкою `algorithm`.
-%     (2) з цієї таблиці, ОКРЕМО по кожному algorithm у ній:
+%         f(h)). Це важка частина (CWT на елемент). Результат кешується
+%         ОКРЕМО ПО КОЖНОМУ АЛГОРИТМУ:
+%             CFG.paths.analyticsRoot\<algorithm>\analytics_summary_table.mat (+ .csv)
+%         (generalized\ , orthogonal\ , ...). Спільної таблиці зверху НЕМАЄ.
+%     (2) з цих таблиць, ОКРЕМО по кожному algorithm:
 %         22 фігури (4x4 сітка f_ik, вісь X = фазове вікно в градусах,
 %         лінії по зразку, кольорова рамка на панелях із позначеною
 %         закономірністю), зведена картинка-"зміст", highlights.csv і
-%         сирі таблиці трендів/порівнянь.
+%         сирі таблиці трендів/порівнянь — усе в тій самій теці <algorithm>\.
 %
 %   Кеш (етап 1) перераховується автоматично, лише якщо:
-%       * analytics_summary_table.mat відсутній, АБО
-%       * якийсь result.mat під CFG.paths.saveRoot новіший за кеш, АБО
+%       * жодної <algorithm>\analytics_summary_table.mat немає, АБО
+%       * якийсь result.mat під CFG.paths.saveRoot новіший за найстарішу
+%         з наявних <algorithm>\analytics_summary_table.mat, АБО
 %       * заданий force.
-%   Інакше береться готова таблиця (швидко — можна багато разів
+%   Інакше беруться готові таблиці по теках (швидко — можна багато разів
 %   переганяти лише графіки, не чекаючи на CWT).
 %
+%   Стара спільна таблиця CFG.paths.analyticsRoot\analytics_summary_table.mat
+%   (якщо лишилась від попередніх версій) один раз автоматично
+%   розноситься по теках алгоритмів і видаляється.
+%
 %   Вихід у CFG.paths.analyticsRoot:
-%     analytics_summary_table.mat / .csv          (спільна таблиця, етап 1)
 %     <algorithm>\                                (generalized\ , orthogonal\ , ...)
+%       analytics_summary_table.mat / .csv        (таблиця зведень ЦЬОГО алгоритму, етап 1)
 %       figures\statistics\*.png    (8)
 %       figures\correlation\*.png   (4)
 %       figures\fractal\*.png       (10)
@@ -38,7 +44,7 @@ function run_TwoPoint_Analytics(cfgOverride, force)
 %
 %   Використання:
 %       run_TwoPoint_Analytics                 % авто: кеш оновлюється лише за потреби
-%       run_TwoPoint_Analytics('force')        % примусово перерахувати таблицю зведень
+%       run_TwoPoint_Analytics('force')        % примусово перерахувати таблиці зведень
 %       run_TwoPoint_Analytics(myCFG)          % власна структура CFG
 %       run_TwoPoint_Analytics(myCFG, true)    % власний CFG + примусовий перерахунок
 
@@ -59,17 +65,30 @@ end
 force = isequal(force, true) || strcmpi(string(force), 'force');
 
 if ~exist(CFG.paths.analyticsRoot,'dir'); mkdir(CFG.paths.analyticsRoot); end
-outMat = fullfile(CFG.paths.analyticsRoot, 'analytics_summary_table.mat');
-outCsv = fullfile(CFG.paths.analyticsRoot, 'analytics_summary_table.csv');
+legacyMat = fullfile(CFG.paths.analyticsRoot, 'analytics_summary_table.mat');
+legacyCsv = fullfile(CFG.paths.analyticsRoot, 'analytics_summary_table.csv');
 
-% ============================ ЕТАП 1: зведення (кеш) ======================
-needRecompute = force || ~isfile(outMat);
+% ============================ ЕТАП 1: зведення (кеш по теках алгоритмів) ===
+% Одноразова міграція старої спільної таблиці -> по теках алгоритмів.
+if isempty(algoSummaryMats(CFG)) && isfile(legacyMat) && ~force
+    S = load(legacyMat);
+    if isfield(S,'T') && istable(S.T) && height(S.T) > 0 ...
+            && ismember('algorithm', S.T.Properties.VariableNames)
+        n = saveAlgoTables(CFG, S.T);
+        fprintf('Стару спільну таблицю рознесено по %d теці(ах) алгоритмів.\n', n);
+    end
+    if isfile(legacyMat); delete(legacyMat); end
+    if isfile(legacyCsv); delete(legacyCsv); end
+end
+
+algoMats = algoSummaryMats(CFG);
+needRecompute = force || isempty(algoMats);
 if ~needRecompute
-    cacheInfo = dir(outMat);
+    oldestCache = min([algoMats.datenum]);
     L = dir(fullfile(CFG.paths.saveRoot, '**', 'result.mat'));
-    if ~isempty(L) && max([L.datenum]) > cacheInfo.datenum
+    if ~isempty(L) && max([L.datenum]) > oldestCache
         needRecompute = true;
-        fprintf('Знайдено result.mat новіші за кеш — таблиця зведень оновлюється.\n');
+        fprintf('Знайдено result.mat новіші за кеш — таблиці зведень оновлюються.\n');
     end
 end
 
@@ -81,11 +100,14 @@ if needRecompute
         fprintf(2, 'Нічого не знайдено в %s — спочатку запусти run_TwoPoint_Pipeline.m.\n', CFG.paths.saveRoot);
         return;
     end
-    save(outMat, 'T', '-v7.3');
-    writetable(T, outCsv);
+    n = saveAlgoTables(CFG, T);
+    fprintf('Таблиці зведень збережено окремо по %d алгоритму(ах).\n', n);
+    if isfile(legacyMat); delete(legacyMat); end
+    if isfile(legacyCsv); delete(legacyCsv); end
 else
-    S = load(outMat, 'T'); T = S.T;
-    fprintf('=== Етап 1: беру готову таблицю зведень (%d рядків). force -> перерахувати ===\n', height(T));
+    T = loadAlgoTables(CFG);
+    fprintf('=== Етап 1: беру готові таблиці по теках (%d рядків, %d алгоритм(ів)). force -> перерахувати ===\n', ...
+            height(T), numel(unique(string(T.algorithm))));
 end
 
 % ============================ ЕТАП 2: графіки по алгоритмах ================
@@ -139,4 +161,64 @@ for ai = 1:numel(algos)
 end
 
 fprintf('\n=== done: %s ===\n', CFG.paths.analyticsRoot);
+end
+
+% ------------------------------------------------------------------------
+function n = saveAlgoTables(CFG, T)
+% Розносить довгу таблицю зведень T по теках алгоритмів:
+%   CFG.paths.analyticsRoot\<algorithm>\analytics_summary_table.mat (+ .csv)
+% Кожна тека містить ЛИШЕ рядки свого алгоритму. Повертає кількість тек.
+algoCol = string(T.algorithm);
+algos   = unique(algoCol, 'stable');
+for ai = 1:numel(algos)
+    algo  = algos(ai);
+    Talgo = T(algoCol == algo, :);   % зберігається у .mat нижче (save за іменем)
+    d = fullfile(CFG.paths.analyticsRoot, char(algo));
+    if ~exist(d,'dir'); mkdir(d); end
+    save(fullfile(d,'analytics_summary_table.mat'), 'Talgo', '-v7.3');
+    writetable(T(algoCol == algo, :), fullfile(d,'analytics_summary_table.csv'));
+end
+n = numel(algos);
+end
+
+% ------------------------------------------------------------------------
+function L = algoSummaryMats(CFG)
+% dir-подібний список analytics_summary_table.mat у ПРЯМИХ підтеках
+% analyticsRoot (по одній на алгоритм). Без wildcard у середині шляху —
+% явний обхід підтек, щоб не залежати від версії MATLAB.
+L = dir(CFG.paths.analyticsRoot);
+L = L([L.isdir] & ~ismember({L.name}, {'.','..'}));
+keep = false(1, numel(L));
+for i = 1:numel(L)
+    f = fullfile(L(i).folder, L(i).name, 'analytics_summary_table.mat');
+    if isfile(f)
+        d = dir(f);
+        L(i).name = d.name; L(i).folder = d.folder;
+        L(i).datenum = d.datenum; L(i).bytes = d.bytes; L(i).date = d.date;
+        keep(i) = true;
+    end
+end
+L = L(keep);
+end
+
+% ------------------------------------------------------------------------
+function T = loadAlgoTables(CFG)
+% Збирає назад одну довгу таблицю з усіх
+%   CFG.paths.analyticsRoot\<algorithm>\analytics_summary_table.mat
+% (для Етапу 2, який сам знову ріже її по algorithm).
+L = algoSummaryMats(CFG);
+parts = cell(1, numel(L));
+for i = 1:numel(L)
+    S = load(fullfile(L(i).folder, L(i).name));
+    if isfield(S,'Talgo'),     parts{i} = S.Talgo;
+    elseif isfield(S,'T'),     parts{i} = S.T;      % сумісність зі старим ім'ям
+    else,                      parts{i} = table();
+    end
+end
+parts = parts(~cellfun(@(t) isempty(t) || height(t)==0, parts));
+if isempty(parts)
+    T = table();
+else
+    T = vertcat(parts{:});
+end
 end
