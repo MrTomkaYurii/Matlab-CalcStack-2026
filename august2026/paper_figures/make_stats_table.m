@@ -10,10 +10,13 @@ function T = make_stats_table(FIG)
 %     stats.multifractal / stats.mueller  — Fig6 / Fig7
 %
 %   .txt — вирівняні колонки, блок на кожен рисунок (зручно читати);
-%   .docx — ті самі числа у стилі журналу.
+%   .docx — ті самі числа у стилі журналу. Файли — у теку СВОГО рисунка:
+%   FIG.out.root\<FigN>\stats.<набір>.txt/.docx
 %
-%   Одна таблиця в .docx = один відрендерений рисунок (variant x зразок x
-%   приклад), 8 рядків = 8 розподілів (2 фазові вікна x 2 елементи x |f|/arg).
+%   ОБСЯГ = FIG.build (як у run_all_figures): рахуються таблиці ЛИШЕ для
+%   обраних рисунків ('Fig1' -> обидві пари; 'Fig2:f33f44' -> лише ця пара).
+%   Порожній / відсутній FIG.build -> усі набори.
+%
 %   Числа рахуються з ТИХ САМИХ величин, що на панелях (через paper_prep) —
 %   нічого у f_ik не перераховується.
 %
@@ -41,7 +44,13 @@ specs = { ...
   struct('file','stats.mueller','kind','mueller','fig','Fig7', ...
          'keys',{{'fig07'}}, 'metrics',{{'Z1','Z2','Z3','Z4'}}) };
 
+build = {};
+if isfield(FIG,'build') && ~isempty(FIG.build); build = FIG.build; end
+
 for s = 1:numel(specs)
+    if ~spec_wanted(build, specs{s})
+        continue;   % цей рисунок не обрано у FIG.build
+    end
     if strcmp(specs{s}.kind,'mueller')
         T = collect_mueller(FIG, specs{s});
     else
@@ -61,11 +70,27 @@ end
 end
 
 % ======================================================================
+function tf = spec_wanted(build, sp)
+% Чи потрібні таблиці цього набору за FIG.build (порожній -> усі).
+if isempty(build); tf = true; return; end
+if strcmp(sp.kind, 'mueller'); tf = build_wants(build, sp.fig); return; end
+tf = any(cellfun(@(k) build_wants(build, sp.fig, key_pair(k)), sp.keys));
+end
+
+function p = key_pair(key)
+p = regexprep(key, '^fig\d+_', '');   % 'fig01_f33f44' -> 'f33f44'
+end
+
+% ======================================================================
 function T = collect_spec(FIG0, sp)
 rows = {};
-for p = 1:numel(sp.keys)
-    FIG = apply_fig_params(FIG0, sp.keys{p});   % ті самі пер-фігурні параметри, що й у рендері
-    C = FIG.(sp.keys{p});  elems = C.elems;
+keys = sp.keys;
+if isfield(FIG0,'build') && ~isempty(FIG0.build)
+    keys = keys(cellfun(@(k) build_wants(FIG0.build, sp.fig, key_pair(k)), keys));
+end
+for p = 1:numel(keys)
+    FIG = apply_fig_params(FIG0, keys{p});   % ті самі пер-фігурні параметри, що й у рендері
+    C = FIG.(keys{p});  elems = C.elems;
     for si = 1:numel(C.samples)
         sName = C.samples{si};  sTag = local_tag(FIG, sName);
         for xi = 1:numel(C.examples)

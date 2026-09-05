@@ -73,12 +73,4 @@ fprintf('\n=== Готово за %.0f с: %s ===\n', toc(t0), FIG.out.root);
 end
 
 % ----------------------------------------------------------------------
-function tf = build_wants(build, figTag, pairKey)
-% 'FigN' у списку -> обидві пари; 'FigN:pair' -> лише ця пара.
-tf = any(strcmpi(build, figTag));
-if ~tf && ~isempty(pairKey)
-    tf = any(strcmpi(build, [figTag ':' pairKey]));
-end
-end
-
 function s = iff(c,a,b); if c; s = a; else; s = b; end; end
