@@ -26,7 +26,7 @@ FIG = struct();
 FIG.out.root    = 'C:\August 2026-Results\Розрахунки - Скомпановані рисунки';
 FIG.out.formats = {'svg','pdf','png'};   % TIFF поки не робимо; повернути 'tiff' у список для фіналу журналу
 FIG.out.tiffDPI = 600;     % растровий TIFF (фінал для журналу): 300 фото / 600 змішане / 1200 штрих
-FIG.out.pngDPI  = 200;     % PNG — прев'ю / вставити у Word чи лист
+FIG.out.pngDPI  = 300;     % PNG — прев'ю / вставити у Word чи лист
 
 % ====================================================================
 % ЩО САМЕ БУДУВАТИ у пакетному прогоні run_all_figures — щоб не «скопом».
@@ -38,9 +38,8 @@ FIG.out.pngDPI  = 200;     % PNG — прев'ю / вставити у Word чи
 %     'stats'          — таблиці статистичних моментів (.txt + .docx)
 %   FIG.build стосується ЛИШЕ run_all_figures. Поодинокі рисунки й далі
 %   запускаються напряму:  make_fig3_f23_f24(cfg_figures())
-FIG.build = { 'Fig1',
-    %'Fig1', 'Fig2', 'Fig3', 'Fig4', 'Fig5', 'Fig6', 'Fig7', ...
-    'stats' };
+% повний набір: {'Fig1','Fig2','Fig3','Fig4','Fig5','Fig6','Fig7','stats'}
+FIG.build = { 'Fig1', 'stats' };
 
 % ---------------------------------------------------------------- джерело
 FIG.data.saveRoot = 'C:\August 2026-Results\Розрахунки - Двот. елем. ММ';
@@ -101,7 +100,7 @@ FIG.phase(2) = struct('glob','phase_06_*', 'label','0 - 0.75\pi');
 %       FIG.fig01_f33f44.params.geom.histH    = 26;
 % ========================================================================
 S = @(elems, elemTex) struct('elems',{elems}, 'elemTex',{elemTex}, ...
-        'samples',{{'Серце','Мяз живота','Мозг'}}, 'examples',{{'1','3'}}, ...
+        'samples',{{'Серце','Мяз живота','Мозг'}}, 'examples',{{'1','2','3'}}, ...
         'variants',{FIG.variants}, 'params',{struct()});
 
 FIG.fig01_f33f44 = S({'f33','f44'}, {'f_{33}','f_{44}'});   % Fig1 (сирі карти)  — f33,f44

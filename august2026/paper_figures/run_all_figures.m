@@ -15,9 +15,10 @@ function run_all_figures(FIG)
 %     6) Fig6  крива D(q)               + спектр f(h) з Delta h
 %     7) Fig7  повна матриця Мюллера на ОДНОМУ рисунку: |f_ik| + arg(f_ik),
 %              обидва фазові вікна — 4 x (4x4) = 64 панелі
-%     8) stats.moments / acf / psd / skeleton / wavelet / multifractal / mueller  (.csv + .docx)
+%     8) stats.moments / acf / psd / skeleton / wavelet / multifractal / mueller  (.txt + .docx)
 %
-%   Кожен формат — у своїй підтеці (.../FigN/color/svg/, .../png/ ...).
+%   Шлях: .../FigN/<color|gray>/<svg|pdf|png>/<generalized|OX|OY>/<файл>
+%   Таблиці моментів — у теці свого рисунка: .../FigN/stats.<набір>.txt/.docx
 %
 %   Що САМЕ будувати — FIG.build (cfg_figures.m). Забери завдання зі списку —
 %   воно пропускається. Поодинокі рисунки й далі: make_figN_xxx(cfg_figures()).

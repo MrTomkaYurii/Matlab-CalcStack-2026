@@ -141,7 +141,7 @@ for b = 1:W
             set(cbAx, 'YTick',[], 'XLim',cl, 'Box','on', 'LineWidth',FIG.line.axis, ...
                     'TickDir','out', 'FontSize',fs, 'XColor','k', 'YColor','k', 'XAxisLocation','bottom');
             if isMod
-                set(cbAx, 'XTick',cl, 'XTickLabel',{numlbl(cl(1)), numlbl(cl(2))});
+                set(cbAx, 'XTick',cl, 'XTickLabel', endlbl(cl(1), cl(2)));
                 isNorm = ~(isfield(FIG,'data') && isfield(FIG.data,'normalize') && ~FIG.data.normalize);
                 lab(gx + grpW/2, cbY + cbH + 2.2, tern(isNorm,'|f_{ik} / f_{11}|','|f_{ik}|  (a.u.)'), ...
                     'VerticalAlignment','middle', 'FontSize',fs-1);
@@ -212,6 +212,12 @@ elseif abs(v) >= 1e-3 && abs(v) < 1e4
 else
     s = num2str(v, '%.0e');
 end
+end
+
+function labs = endlbl(lo, hi)
+% Мізерний проти діапазону кінець осі -> '0' (а не '1e-05').
+thr = max(1e-4, 0.01 * abs(hi - lo));
+labs = { tern(abs(lo) < thr, '0', numlbl(lo)), tern(abs(hi) < thr, '0', numlbl(hi)) };
 end
 
 function out = tern(c,a,b); if c; out = a; else; out = b; end; end

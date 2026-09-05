@@ -174,7 +174,10 @@ end
 function outPath = write_txt(T, FIG, sp)
 % Гарно вирівняний .txt: шапка з поясненням -> блок на кожен рисунок
 % (variant x зразок x приклад), у блоці — таблиця з вирівняними колонками.
-outPath = fullfile(FIG.out.root, [sp.file '.txt']);
+% Кладеться у теку СВОГО рисунка: FIG.out.root\<sp.fig>\<sp.file>.txt
+outDir = fullfile(FIG.out.root, sp.fig);
+if ~exist(outDir,'dir'); mkdir(outDir); end
+outPath = fullfile(outDir, [sp.file '.txt']);
 [head, cols, fmts] = table_columns(sp.metrics);
 
 fid = fopen(outPath, 'w', 'n', 'UTF-8');
@@ -313,8 +316,10 @@ end
 % ======================================================================
 function outPath = build_docx(T, FIG, sp)
 import mlreportgen.dom.*
-outPath = fullfile(FIG.out.root, [sp.file '.docx']);
-d = Document(fullfile(FIG.out.root, sp.file), 'docx');  open(d);
+outDir = fullfile(FIG.out.root, sp.fig);   % у теку свого рисунка
+if ~exist(outDir,'dir'); mkdir(outDir); end
+outPath = fullfile(outDir, [sp.file '.docx']);
+d = Document(fullfile(outDir, sp.file), 'docx');  open(d);
 AR = {FontFamily('Arial')};
 
 h = append(d, Heading(1, sprintf('%s  (%s)', stats_title(sp.kind), sp.fig)));

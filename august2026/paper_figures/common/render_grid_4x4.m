@@ -168,7 +168,7 @@ for r = 1:4
                 if strcmp(kind,'raw') && ~isMod
                     set(cbAx, 'XTick',[-pi 0 pi], 'XTickLabel',{'-\pi','0','\pi'});
                 else
-                    set(cbAx, 'XTick',cl, 'XTickLabel',{numlbl(cl(1)), numlbl(cl(2))});
+                    set(cbAx, 'XTick',cl, 'XTickLabel', endlbl(cl(1), cl(2)));
                 end
             end
 
@@ -247,7 +247,7 @@ for r = 1:4
             if strcmp(kind,'raw') && ~isMod
                 set(ax, 'XTick',[-pi 0 pi], 'XTickLabel',{'-\pi','0','\pi'});
             else
-                set(ax, 'XTick',[edg(1) edg(end)], 'XTickLabel',{numlbl(edg(1)), numlbl(edg(end))});
+                set(ax, 'XTick',[edg(1) edg(end)], 'XTickLabel', endlbl(edg(1), edg(end)));
             end
             xlabel(ax, botXlab(kind, isMod, elemTex{eIdx(c)}), 'Color','k');
             ylabel(ax, ylabForNorm(FIG.hist.norm), 'Color','k');
@@ -317,6 +317,14 @@ if v == 0; s = '0';
 elseif abs(v) >= 1e-3 && abs(v) < 1e4; s = num2str(v, '%.2g');
 else; s = num2str(v, '%.0e');
 end
+end
+
+function labs = endlbl(lo, hi)
+% Підписи двох кінців осі (гістограма / colorbar): кінець, МІЗЕРНИЙ проти
+% діапазону, показуємо як '0' — а не '1e-05' тощо.
+thr = max(1e-4, 0.01 * abs(hi - lo));
+f = @(v) tern(abs(v) < thr, '0', numlbl(v));
+labs = {f(lo), f(hi)};
 end
 
 function s = ylabForNorm(nm)

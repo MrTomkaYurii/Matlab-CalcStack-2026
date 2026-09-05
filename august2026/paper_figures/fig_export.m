@@ -1,7 +1,10 @@
-function files = fig_export(figH, outDir, baseName, FIG)
+function files = fig_export(figH, outDir, baseName, FIG, sub)
 % FIG_EXPORT  Зберігає ОДНУ фігуру в усіх форматах FIG.out.formats, КОЖЕН —
-%   у своїй підтеці outDir\<fmt>\ (щоб svg/pdf/png не змішувались в одній
-%   теці): outDir\svg\<baseName>.svg, outDir\pdf\<baseName>.pdf, ...
+%   у своїй підтеці outDir\<fmt>\[\<sub>\] (щоб svg/pdf/png не змішувались):
+%   outDir\svg\<sub>\<baseName>.svg, outDir\pdf\<sub>\<baseName>.pdf, ...
+%   sub (необов'язково) — ще один рівень усередині <fmt>\ (напр. тег алгоритму
+%   'generalized'/'OX'/'OY': в одну теку картинок збирається багато й важко
+%   шукати). Порожній/відсутній -> без цього рівня.
 %   baseName — без розширення (крапки в імені дозволені: вони не
 %   інтерпретуються як розширення, значуще лише останнє ".<fmt>").
 %
@@ -12,11 +15,13 @@ function files = fig_export(figH, outDir, baseName, FIG)
 %   png  : exportgraphics Resolution=FIG.out.pngDPI    (прев'ю)
 %   fig  : savefig                                     (перевідкрити в MATLAB)
 
+if nargin < 5 || isempty(sub); sub = ''; end
 files = strings(0,1);
 
 for k = 1:numel(FIG.out.formats)
     fmt   = lower(FIG.out.formats{k});
     fmtDir = fullfile(outDir, fmt);
+    if ~isempty(sub); fmtDir = fullfile(fmtDir, sub); end
     if ~exist(fmtDir,'dir'); mkdir(fmtDir); end
     f = fullfile(fmtDir, [baseName '.' fmt]);
     switch fmt

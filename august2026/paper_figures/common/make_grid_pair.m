@@ -59,10 +59,10 @@ for si = 1:numel(C.samples)
                 outDir = fullfile(FIG.out.root, figTag, mode);
                 base   = sprintf('%s.%s-%s.%s.%s.%s%s.%s', ...
                     figTag, elems{1}, elems{2}, v.tag, sTag, exTag(FIG), ex, mode);
-                fig_export(figH, outDir, base, FIG);
+                fig_export(figH, outDir, base, FIG, v.tag);   % <fmt>\<v.tag>\ підтека
                 close(figH);
                 n = n + 1;
-                fprintf('  [ok] %s\\%s\\%s\n', figTag, mode, base);
+                fprintf('  [ok] %s\\%s\\<fmt>\\%s\\%s\n', figTag, mode, v.tag, base);
             end
         end
     end

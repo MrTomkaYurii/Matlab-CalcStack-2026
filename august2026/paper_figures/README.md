@@ -59,17 +59,19 @@ make_stats_table           % лише таблиці моментів (.txt + .d
 
 ## Тека виводу (`FIG.out.root`, типово `C:\August 2026-Results\Розрахунки - Скомпановані рисунки`)
 
-Кожен формат — у своїй підтеці:
+Кожен формат — у своїй підтеці, усередині ще підтека алгоритму (в одну
+теку картинок збирається багато — так легше шукати):
 
 ```
-Fig1/ color/ svg/  Fig1.f33-f44.generalized.heart.ex1.color.svg
-              pdf/|png/  ...        gray/ svg/|pdf/|png/  ... .gray. ...
-       (+ Fig1.f23-f24. ... поряд)
-Fig2/ ...   Fig3/ ...
-stats.moments.csv/.docx   stats.acf.csv/.docx   stats.psd.csv/.docx
+Fig1/ color/ svg/ generalized/  Fig1.f33-f44.generalized.heart.zrazok1.color.svg
+                                 (+ Fig1.f23-f24. ... поряд)
+             svg/ OX/|OY/  ...   png/|pdf/ <те саме>   gray/ <те саме>
+      stats.moments.txt/.docx    (таблиці моментів цього рисунка — тут)
+Fig2/ ... (stats.acf)   Fig3/ ... (stats.psd)   ...   Fig7/ ... (stats.mueller)
 ```
 
-Теги зразків: `heart` / `muscle` / `brain`. Роздільник в іменах — крапка.
+Теги зразків: `heart` / `muscle` / `brain`; приклад — `FIG.exampleTag`
+(типово `zrazok`: `zrazok1`, `zrazok2`, ...). Роздільник в іменах — крапка.
 Тег алгоритму — `generalized` / `OX` / `OY` (повна назва, не "XY").
 
 ## Ключові параметри (`cfg_figures.m`)
@@ -99,4 +101,4 @@ stats.moments.csv/.docx   stats.acf.csv/.docx   stats.psd.csv/.docx
 
 `august2026\config\cfg_TwoPoint.m` не потрібен. `august2026\core\` —
 `tp_acf_psd.m`, `tp_acf_hwhm.m` (Fig2/Fig3). Statistics Toolbox не
-обов'язковий. Report Generator — лише для `.docx` (є fallback на `.csv`).
+обов'язковий. Report Generator — лише для `.docx`; `.txt`-таблиці будуються завжди.

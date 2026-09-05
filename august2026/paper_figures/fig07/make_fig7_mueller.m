@@ -51,10 +51,10 @@ for si = 1:numel(C.samples)
                 exT = 'ex';
                 if isfield(FIG,'exampleTag') && ~isempty(FIG.exampleTag); exT = FIG.exampleTag; end
                 base = sprintf('Fig7.mueller.%s.%s.%s%s.%s', v.tag, sTag, exT, ex, mode);
-                fig_export(figH, outDir, base, FIG);
+                fig_export(figH, outDir, base, FIG, v.tag);   % <fmt>\<v.tag>\ підтека
                 close(figH);
                 n = n + 1;
-                fprintf('  [ok] Fig7\\%s\\%s\n', mode, base);
+                fprintf('  [ok] Fig7\\%s\\<fmt>\\%s\\%s\n', mode, v.tag, base);
             end
         end
     end
