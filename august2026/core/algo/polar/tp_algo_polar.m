@@ -52,10 +52,11 @@ R = tp_base_result('polar', sampleName, CFG);
 R.dirs = {};
 
 doMontage = ~isfield(P,'montage') || P.montage;
-mEls = {};
+mEls = {};  mIdx = [];
 if doMontage && isfield(P,'montageElements')
     mEls = intersect(P.montageElements, els, 'stable');
-end
+    [~, mIdx] = ismember(mEls, els);   % позиції монтажних елементів у ПОВНОМУ списку els
+end                                    % (Sacc індексується за els, не за mEls)
 
 fprintf('  [polar] %s: %d кутів (0..%g град, крок %g), rho = %s, posStep=%d\n', ...
         sampleName, nT, P.angleMax, P.angleStep, mat2str(P.radii), posStep);
@@ -91,8 +92,14 @@ for si = 1:numel(P.radii)
             Sacc{e}(ok) = Sacc{e}(ok) + z(ok);       % КОМПЛЕКСНА СУМА, без /N
         end
         for m = 1:numel(mEls), montage{m}(:,:,t) = single(abs(F.(mEls{m}))); end
-        if thetaDeg(t) == 0,  Fox = F; end
-        if thetaDeg(t) == 90, Foy = F; end
+        if abs(thetaDeg(t))      < 1e-6, Fox = F; end   % theta=0  -> OX
+        if abs(thetaDeg(t) - 90) < 1e-6, Foy = F; end   % theta=90 -> OY (лише якщо 90 кратне angleStep)
+    end
+
+    if isempty(Foy) && P.angleMax > 90 && si == 1
+        fprintf(2, ['   [polar] OY (theta=90 град) пропущено: 90 не кратне angleStep=%g. ' ...
+                    'Візьми дільник 90 у CFG.polar.angleStep (напр. 9,10,15,18) — PERP не залежить від цього.\n'], ...
+                P.angleStep);
     end
 
     % пікселі, де ЖОДЕН напрям не був валідним -> сума не визначена (NaN, не 0)
@@ -121,7 +128,7 @@ for si = 1:numel(P.radii)
     % --- рисунок по-кутових карт (subplot) ---------------------------
     for m = 1:numel(mEls)
         try
-            polarMontage(montage{m}, abs(Sacc{m}), thetaDeg, mEls{m}, rho, sampleName, CFG);
+            polarMontage(montage{m}, abs(Sacc{mIdx(m)}), thetaDeg, mEls{m}, rho, sampleName, CFG);
         catch ME
             fprintf(2, '   [viz fail] polar montage %s/step_%d: %s\n', mEls{m}, rho, ME.message);
         end

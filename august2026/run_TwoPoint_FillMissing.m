@@ -52,7 +52,7 @@ if isfield(CFG.ortho,'directions') && ~isempty(CFG.ortho.directions)
 end
 
 fprintf('=== Пошук прогалин ===\n');
-plan = struct('sampleName',{},'example',{},'k',{},'needOrtho',{},'needGenSteps',{});
+plan = struct('sampleName',{},'example',{},'k',{},'needOrtho',{},'needGenSteps',{},'needPolar',{});
 
 for s = 1:numel(CFG.samples)
     sampleName = CFG.samples{s};
@@ -87,9 +87,23 @@ for s = 1:numel(CFG.samples)
                 end
             end
 
-            if needOrtho || ~isempty(needGenSteps)
+            % polar: tp_algo_polar рахує всі напрями (PERP/OX/OY) за один виклик,
+            % як orthogonal -> досить перевірити ЄДИНУ карту PERP на кожен радіус
+            % rho (OX/OY можуть бути відсутні за конфігом — 90 не кратне angleStep —
+            % і не мають запускати нескінченний дорахунок).
+            needPolar = false;
+            if any(strcmpi(CFG.algorithms,'polar')) && isfield(CFG,'polar')
+                for si = 1:numel(CFG.polar.radii)
+                    f = fullfile(CFG.paths.saveRoot, phaseOut, 'polar', 'PERP', ...
+                                 sprintf('step_%d', CFG.polar.radii(si)), 'result.mat');
+                    if ~isfile(f), needPolar = true; end
+                end
+            end
+
+            if needOrtho || ~isempty(needGenSteps) || needPolar
                 plan(end+1) = struct('sampleName',sampleName, 'example',example, 'k',k, ...
-                                      'needOrtho',needOrtho, 'needGenSteps',needGenSteps); %#ok<AGROW>
+                                      'needOrtho',needOrtho, 'needGenSteps',needGenSteps, ...
+                                      'needPolar',needPolar); %#ok<AGROW>
             end
         end
     end
@@ -106,8 +120,8 @@ for i = 1:numel(plan)
     if ~isempty(plan(i).needGenSteps)
         genTxt = ['steps ' mat2str(plan(i).needGenSteps)];
     end
-    fprintf('  %s / %s / k=%d : orthogonal=%d, generalized=%s\n', ...
-            plan(i).sampleName, plan(i).example, plan(i).k, plan(i).needOrtho, genTxt);
+    fprintf('  %s / %s / k=%d : orthogonal=%d, generalized=%s, polar=%d\n', ...
+            plan(i).sampleName, plan(i).example, plan(i).k, plan(i).needOrtho, genTxt, plan(i).needPolar);
 end
 
 % ---- дорахувати: групуємо по (sampleName,example), щоб не перечитувати IMG ----
@@ -166,6 +180,28 @@ for p = 1:numel(uniquePairs)
                 tp_visualize(R, CFG);
             catch ME
                 fprintf(2, '    [fail] %s / orthogonal k=%d: %s\n', sampleLabel, it.k, ME.message);
+            end
+        end
+
+        if it.needPolar
+            try
+                t = tic;
+                R = tp_algo_polar(IMGk, CFG, sampleOut);
+                fprintf('    [polar] %s / k=%d : computed in %.1f s\n', sampleLabel, it.k, toc(t));
+                for di = 1:numel(R.dirs)
+                    dirName = R.dirs{di};
+                    sep = R.sep.(dirName);
+                    outDir = fullfile(CFG.paths.saveRoot, phaseOut, 'polar', sep.direction, sprintf('step_%d', sep.delta));
+                    if ~exist(outDir,'dir'); mkdir(outDir); end
+                    Rd = tp_slice_result_dir(R, dirName);
+                    save(fullfile(outDir,'result.mat'), 'Rd', '-v7.3');
+                    rows = tp_analytics_rows_for_result(Rd, ctx.sample, ctx.example, 'polar', ...
+                                                         sep.direction, sep.delta, ctx.phase_index, ctx.phase_deg, CFG);
+                    tryAppend(CFG, rows, sampleLabel);
+                end
+                tp_visualize(R, CFG);
+            catch ME
+                fprintf(2, '    [fail] %s / polar k=%d: %s\n', sampleLabel, it.k, ME.message);
             end
         end
 

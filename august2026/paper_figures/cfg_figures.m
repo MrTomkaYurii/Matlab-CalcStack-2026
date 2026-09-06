@@ -69,10 +69,19 @@ FIG.exampleTag = 'zrazok';
 % і в підтеку — "generalized", а не скорочення "XY").
 %   generalized: saveRoot\<S>\<E>\<phase>\generalized\step_<d>\result.mat  (var R)
 %   orthogonal : saveRoot\<S>\<E>\<phase>\orthogonal\<OX|OY>\step_<d>\result.mat (var Rd)
+%   polar : saveRoot\<S>\<E>\<phase>\polar\<PERP|OX|OY>\step_<d>\result.mat (var Rd)
+%           PERP — ЄДИНА карта (Σ_θ f); polarOX/polarOY — осьові зрізи того ж скану.
 FIG.variants = { ...
     struct('tag','generalized', 'algo','generalized', 'dir',''  ), ...
     struct('tag','OX',          'algo','orthogonal',  'dir','OX'), ...
     struct('tag','OY',          'algo','orthogonal',  'dir','OY') };
+%   Розкоментуй ПІСЛЯ розрахунку polar (CFG.algorithms={'polar'} у cfg_TwoPoint.m).
+%   Читання вже підтримане (common\tp_paper_read.m, case 'polar'). Доти рядки нижче
+%   лишай закоментованими — інакше кожен рисунок друкує "[skip] ... немає result.mat".
+% FIG.variants(end+1:end+3) = { ...
+%     struct('tag','PERP',    'algo','polar', 'dir','PERP'), ...
+%     struct('tag','polarOX', 'algo','polar', 'dir','OX'), ...
+%     struct('tag','polarOY', 'algo','polar', 'dir','OY') };
 
 % фазові вікна = БЛОКИ рисунка (верхній -> нижній). Кожен блок = ряд карт +
 % ряд гістограм/поверхонь під ними.

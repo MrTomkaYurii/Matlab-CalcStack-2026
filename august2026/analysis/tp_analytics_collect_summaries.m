@@ -65,6 +65,22 @@ for s = 1:numel(CFG.samples)
                         'generalized', 'XY', step, k, phaseDeg, CFG);
                 end
             end
+
+            % polar: <PERP|OX|OY>\step_N\result.mat (змінна Rd, крок = радіус rho).
+            % Той самий шлях, що й tp_collect_sample_for_horsky / tp_phase_trend.
+            for dirLabel = {'PERP','OX','OY'}
+                dirRoot = fullfile(CFG.paths.saveRoot, phaseOut, 'polar', dirLabel{1});
+                if ~isfolder(dirRoot), continue; end
+                stepDirs = dir(fullfile(dirRoot, 'step_*'));
+                for si = 1:numel(stepDirs)
+                    rFile = fullfile(dirRoot, stepDirs(si).name, 'result.mat');
+                    if ~isfile(rFile), continue; end
+                    step = sscanf(stepDirs(si).name, 'step_%d');
+                    Slp = load(rFile, 'Rd');
+                    rowsCell = appendElementRows(rowsCell, Slp.Rd, sampleName, example, ...
+                        'polar', dirLabel{1}, step, k, phaseDeg, CFG);
+                end
+            end
         end
     end
 end

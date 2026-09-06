@@ -228,6 +228,7 @@ handing off to M. Horsky's multifractal-spectrum analysis:
 orthogonal.phase_0to<D>deg.<OX_step_D|OY_step_D>.<fXX>.mod/.arg
 generalized.phase_0to<D>deg.step_<D>.<fXX>.mod/.arg
 polar.phase_0to<D>deg.<PERP_step_D|OX_step_D|OY_step_D>.<fXX>.mod/.arg
+polar.phase_0to<D>deg.PERP_step_D.validCount   (extra: N directions summed per pixel)
 ```
 
 `D` in `phase_0to<D>deg` is the window's upper bound in degrees (whole
@@ -235,8 +236,11 @@ numbers, no decimals): `phase_0to360deg` (barely filtered) down to
 `phase_0to45deg` (narrowest, step 45° = 0.25π). `D` in `step_<D>` is the
 pixel distance (1, 2, 4, 8, 16, 32). For `polar`, `PERP_step_D` is the
 single unified map (complex sum `Σ_θ f` over the polar angle scan, no
-division), `OX/OY_step_D` its θ=0 / θ=90° axial slices. Which algorithms
-get collected is `CFG.horsky.algorithms` (default: all three).
+division), `OX/OY_step_D` its θ=0 / θ=90° axial slices, and
+`PERP_step_D.validCount` is the per-pixel count of directions that actually
+entered the sum (`nAngles` in the interior, fewer near the frame edge) —
+forwarded so the ratio scale can be normalised downstream if needed. Which
+algorithms get collected is `CFG.horsky.algorithms` (default: all three).
 
 **Runs automatically** — `run_TwoPoint_Pipeline.m` calls it the moment a
 sample (all its examples) finishes computing, so each sample's data is

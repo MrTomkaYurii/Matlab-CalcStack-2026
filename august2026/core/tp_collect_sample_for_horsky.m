@@ -124,6 +124,15 @@ for ei = 1:numel(examplesList)
                     S = load(rFile, 'Rd');
                     key = sprintf('%s_%s', dirLabel{1}, stepDirs(si).name);   % напр. PERP_step_1
                     polarPacked.(key) = packElements(S.Rd);
+                    % ЄДИНА карта: скільки напрямів реально ввійшло в Sum_theta на
+                    % піксель (край кадру < nAngles) — для нормування на боці Горського.
+                    if strcmp(dirLabel{1}, 'PERP') && isfield(S.Rd,'params') ...
+                            && isfield(S.Rd.params,'validCount')
+                        vcName = S.Rd.dirs{1};                       % 'PERP_step_<rho>'
+                        if isfield(S.Rd.params.validCount, vcName)
+                            polarPacked.(key).validCount = S.Rd.params.validCount.(vcName);
+                        end
+                    end
                     nLoadedPolar = nLoadedPolar + 1;
                 end
             end

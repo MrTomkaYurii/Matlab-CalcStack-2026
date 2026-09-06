@@ -28,6 +28,14 @@ switch lower(variant.algo)
         rf = fullfile(phaseDir, 'orthogonal', upper(variant.dir), stepFolder, 'result.mat');
         assert(isfile(rf), 'tp_paper_read: немає %s', rf);
         S = load(rf, 'Rd');  R = S.Rd;
+    case 'polar'
+        % ЄДИНА карта PERP (Σ_θ f) або осьові зрізи OX/OY того самого скану;
+        % розкладка тек як в orthogonal (змінна Rd), крок = радіус rho.
+        assert(any(strcmpi(variant.dir, {'PERP','OX','OY'})), ...
+            'tp_paper_read: для polar потрібен variant.dir = PERP, OX або OY');
+        rf = fullfile(phaseDir, 'polar', upper(variant.dir), stepFolder, 'result.mat');
+        assert(isfile(rf), 'tp_paper_read: немає %s', rf);
+        S = load(rf, 'Rd');  R = S.Rd;
     otherwise
         error('tp_paper_read: невідомий algo "%s"', variant.algo);
 end

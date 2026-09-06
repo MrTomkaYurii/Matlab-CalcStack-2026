@@ -40,6 +40,20 @@ if isfield(CFG,'polar')
     end
 end
 
+% Імена алгоритмів (і в CFG.algorithms, і в CFG.horsky.algorithms) — з відомого
+% списку, інакше опечатка ("poler") мовчки нічого не порахує / не збере.
+knownAlgos = {'orthogonal','generalized','polar'};
+tp_assert(all(ismember(lower(CFG.algorithms), knownAlgos)), ...
+    'CFG.algorithms: лише {%s} (зараз: {%s})', strjoin(knownAlgos, ', '), strjoin(CFG.algorithms, ', '));
+tp_assert(~any(strcmpi(CFG.algorithms,'polar')) || isfield(CFG,'polar'), ...
+    'CFG.algorithms містить ''polar'', але секції CFG.polar немає');
+if isfield(CFG,'horsky') && isfield(CFG.horsky,'algorithms') && ~isempty(CFG.horsky.algorithms)
+    tp_assert(iscell(CFG.horsky.algorithms) && ...
+        all(ismember(lower(CFG.horsky.algorithms), knownAlgos)), ...
+        'CFG.horsky.algorithms: підмножина {%s} (зараз: {%s})', ...
+        strjoin(knownAlgos, ', '), strjoin(cellstr(string(CFG.horsky.algorithms)), ', '));
+end
+
 tp_assert(isfield(CFG,'viz') && iscell(CFG.viz.colormaps) && ~isempty(CFG.viz.colormaps), ...
     'CFG.viz.colormaps: непорожній cell-масив (напр. {''jet'',''gray''})');
 if isfield(CFG.viz,'contourSmoothPx')
