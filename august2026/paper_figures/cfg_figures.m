@@ -66,22 +66,23 @@ FIG.sampleTag = { ...
 FIG.exampleTag = 'zrazok';
 
 % варіанти алгоритм/напрям: tag -> як шукати result.mat (tag іде в ІМ'Я ФАЙЛУ
-% і в підтеку). ПОВНИЙ перелік того, для чого МОЖНА компонувати рисунки;
-% що будувати ЗА ЗАМОВЧУВАННЯМ — задає def.variants у секції 5a.
+% і в підтеку). Кожен рядок нижче — окремий незалежний варіант: розкоментуй
+% (прибери провідний "% ") ті, для яких потрібна компоновка; лишні лиши/поверни
+% закоментованими. Порядок у списку = порядок розкоментованих рядків.
 %   XY         : saveRoot\<S>\<E>\<phase>\XY\step_<d>\result.mat            (var R)
 %   generalized: saveRoot\<S>\<E>\<phase>\generalized\step_<d>\result.mat   (var R)
 %   orthogonal : saveRoot\<S>\<E>\<phase>\orthogonal\<OX|OY>\step_<d>\result.mat (var Rd)
 %   polar      : saveRoot\<S>\<E>\<phase>\polar\<PERP|OX|OY>\step_<d>\result.mat  (var Rd)
-% Кожен варіант треба спершу ПОРАХУВАТИ (CFG.algorithms у config\cfg_TwoPoint.m),
+% Варіант треба спершу ПОРАХУВАТИ (CFG.algorithms у config\cfg_TwoPoint.m),
 % інакше рисунок для нього друкує "[skip] ... немає result.mat" і пропускається.
-FIG.variants = { ...
-    struct('tag','XY',          'algo','XY',          'dir',''    ), ...   % ЗВЕДЕНА карта OX+OY (за замовчуванням)
-    struct('tag','generalized', 'algo','generalized', 'dir',''    ), ...
-    struct('tag','OX',          'algo','orthogonal',  'dir','OX'  ), ...
-    struct('tag','OY',          'algo','orthogonal',  'dir','OY'  ), ...
-    struct('tag','PERP',        'algo','polar',       'dir','PERP'), ...   % полярна ЄДИНА карта (Σ_θ f)
-    struct('tag','polarOX',     'algo','polar',       'dir','OX'  ), ...
-    struct('tag','polarOY',     'algo','polar',       'dir','OY'  ) };
+FIG.variants = {};
+FIG.variants{end+1} = struct('tag','XY',          'algo','XY',          'dir',''    );   % ЗВЕДЕНА карта OX+OY
+% FIG.variants{end+1} = struct('tag','generalized', 'algo','generalized', 'dir',''    );   % повний 2D-скан (Δx,Δy)
+% FIG.variants{end+1} = struct('tag','OX',          'algo','orthogonal',  'dir','OX'  );   % ортогональний, зсув по x
+% FIG.variants{end+1} = struct('tag','OY',          'algo','orthogonal',  'dir','OY'  );   % ортогональний, зсув по y
+% FIG.variants{end+1} = struct('tag','PERP',        'algo','polar',       'dir','PERP');   % полярна ЄДИНА карта (Σ_θ f)
+% FIG.variants{end+1} = struct('tag','polarOX',     'algo','polar',       'dir','OX'  );   % полярний зріз theta=0
+% FIG.variants{end+1} = struct('tag','polarOY',     'algo','polar',       'dir','OY'  );   % полярний зріз theta=90
 
 % фазові вікна = БЛОКИ рисунка (верхній -> нижній). Кожен блок = ряд карт +
 % ряд гістограм/поверхонь під ними.
@@ -100,12 +101,9 @@ FIG.phase(2) = struct('glob','phase_06_*', 'label','0 - 0.75\pi');
 % --- 5a. Спільний охват за замовчуванням (діє на КОЖЕН рисунок) -----------
 def.samples  = {'Серце','Мяз живота','Мозг'};   % які тканини
 def.examples = {'1','2','3'};                    % які приклади (підтеки 1/2/3)
-% ЯКІ ВАРІАНТИ будувати ЗАРАЗ (індекси у FIG.variants вище: 1=XY, 2=generalized,
-% 3=OX, 4=OY, 5=PERP, 6=polarOX, 7=polarOY). Зараз обрано: лише XY.
-%   def.variants = FIG.variants;             % усі 7
-%   def.variants = FIG.variants([1 2]);      % XY + generalized
-%   def.variants = FIG.variants([2 3 4]);    % як було раніше (generalized + OX + OY)
-def.variants = FIG.variants(1);                  % <- XY
+% Варіанти = усі, розкоментовані в FIG.variants вище (зараз лише XY). Тобто
+% щоб додати generalized/OX/OY/PERP до компоновки — розкоментуй їх там, а не тут.
+def.variants = FIG.variants;
 
 % --- 5b. Секції рисунків (будуються з def; НЕ чіпати — правити 5c/5d) -----
 S = @(el, tex) struct('elems',{el}, 'elemTex',{tex}, ...
@@ -137,8 +135,8 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
 %
 % FIG.fig01_f33f44.samples  = {'Серце'};                 % лише серце
 % FIG.fig03_f23f24.examples = {'2'};                     % лише приклад 2
-% FIG.fig06_f33f44.variants = FIG.variants(2);           % цей рисунок — лише generalized
-% FIG.fig01_f33f44.variants = FIG.variants([1 5]);       % цей рисунок — XY + PERP
+% FIG.fig06_f33f44.variants = FIG.variants(1);           % цей рисунок — лише 1-й варіант зі списку
+% FIG.fig01_f33f44.variants = {struct('tag','XY','algo','XY','dir','')};  % цей рисунок — тільки XY
 % FIG.fig05_f23f24.elems    = {'f11','f22'};             % інша пара елементів
 % FIG.fig05_f23f24.elemTex  = {'f_{11}','f_{22}'};
 % FIG.fig07.samples         = {'Серце','Мозг'};
