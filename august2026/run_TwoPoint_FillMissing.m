@@ -52,7 +52,8 @@ if isfield(CFG.ortho,'directions') && ~isempty(CFG.ortho.directions)
 end
 
 fprintf('=== Пошук прогалин ===\n');
-plan = struct('sampleName',{},'example',{},'k',{},'needOrtho',{},'needGenSteps',{},'needPolar',{});
+plan = struct('sampleName',{},'example',{},'k',{},'needOrtho',{},'needGenSteps',{}, ...
+              'needPolar',{},'needXysum',{});
 
 for s = 1:numel(CFG.samples)
     sampleName = CFG.samples{s};
@@ -100,10 +101,21 @@ for s = 1:numel(CFG.samples)
                 end
             end
 
-            if needOrtho || ~isempty(needGenSteps) || needPolar
+            % xysum: tp_algo_xysum рахує всі напрями (XY/OX/OY) за один виклик ->
+            % досить перевірити ЄДИНУ карту XY на кожен крок d.
+            needXysum = false;
+            if any(strcmpi(CFG.algorithms,'xysum')) && isfield(CFG,'xysum')
+                for si = 1:numel(CFG.xysum.steps)
+                    f = fullfile(CFG.paths.saveRoot, phaseOut, 'xysum', 'XY', ...
+                                 sprintf('step_%d', CFG.xysum.steps(si)), 'result.mat');
+                    if ~isfile(f), needXysum = true; end
+                end
+            end
+
+            if needOrtho || ~isempty(needGenSteps) || needPolar || needXysum
                 plan(end+1) = struct('sampleName',sampleName, 'example',example, 'k',k, ...
                                       'needOrtho',needOrtho, 'needGenSteps',needGenSteps, ...
-                                      'needPolar',needPolar); %#ok<AGROW>
+                                      'needPolar',needPolar, 'needXysum',needXysum); %#ok<AGROW>
             end
         end
     end
@@ -120,8 +132,9 @@ for i = 1:numel(plan)
     if ~isempty(plan(i).needGenSteps)
         genTxt = ['steps ' mat2str(plan(i).needGenSteps)];
     end
-    fprintf('  %s / %s / k=%d : orthogonal=%d, generalized=%s, polar=%d\n', ...
-            plan(i).sampleName, plan(i).example, plan(i).k, plan(i).needOrtho, genTxt, plan(i).needPolar);
+    fprintf('  %s / %s / k=%d : orthogonal=%d, generalized=%s, polar=%d, xysum=%d\n', ...
+            plan(i).sampleName, plan(i).example, plan(i).k, plan(i).needOrtho, genTxt, ...
+            plan(i).needPolar, plan(i).needXysum);
 end
 
 % ---- дорахувати: групуємо по (sampleName,example), щоб не перечитувати IMG ----
@@ -202,6 +215,28 @@ for p = 1:numel(uniquePairs)
                 tp_visualize(R, CFG);
             catch ME
                 fprintf(2, '    [fail] %s / polar k=%d: %s\n', sampleLabel, it.k, ME.message);
+            end
+        end
+
+        if it.needXysum
+            try
+                t = tic;
+                R = tp_algo_xysum(IMGk, CFG, sampleOut);
+                fprintf('    [xysum] %s / k=%d : computed in %.1f s\n', sampleLabel, it.k, toc(t));
+                for di = 1:numel(R.dirs)
+                    dirName = R.dirs{di};
+                    sep = R.sep.(dirName);
+                    outDir = fullfile(CFG.paths.saveRoot, phaseOut, 'xysum', sep.direction, sprintf('step_%d', sep.delta));
+                    if ~exist(outDir,'dir'); mkdir(outDir); end
+                    Rd = tp_slice_result_dir(R, dirName);
+                    save(fullfile(outDir,'result.mat'), 'Rd', '-v7.3');
+                    rows = tp_analytics_rows_for_result(Rd, ctx.sample, ctx.example, 'xysum', ...
+                                                         sep.direction, sep.delta, ctx.phase_index, ctx.phase_deg, CFG);
+                    tryAppend(CFG, rows, sampleLabel);
+                end
+                tp_visualize(R, CFG);
+            catch ME
+                fprintf(2, '    [fail] %s / xysum k=%d: %s\n', sampleLabel, it.k, ME.message);
             end
         end
 

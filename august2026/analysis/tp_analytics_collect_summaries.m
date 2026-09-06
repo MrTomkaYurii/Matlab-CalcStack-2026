@@ -81,6 +81,21 @@ for s = 1:numel(CFG.samples)
                         'polar', dirLabel{1}, step, k, phaseDeg, CFG);
                 end
             end
+
+            % xysum: <XY|OX|OY>\step_N\result.mat (змінна Rd, крок = d).
+            for dirLabel = {'XY','OX','OY'}
+                dirRoot = fullfile(CFG.paths.saveRoot, phaseOut, 'xysum', dirLabel{1});
+                if ~isfolder(dirRoot), continue; end
+                stepDirs = dir(fullfile(dirRoot, 'step_*'));
+                for si = 1:numel(stepDirs)
+                    rFile = fullfile(dirRoot, stepDirs(si).name, 'result.mat');
+                    if ~isfile(rFile), continue; end
+                    step = sscanf(stepDirs(si).name, 'step_%d');
+                    Slx = load(rFile, 'Rd');
+                    rowsCell = appendElementRows(rowsCell, Slx.Rd, sampleName, example, ...
+                        'xysum', dirLabel{1}, step, k, phaseDeg, CFG);
+                end
+            end
         end
     end
 end

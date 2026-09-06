@@ -41,6 +41,16 @@ for a = 1:numel(CFG.algorithms)
                     agg = accumulate(agg, rf, k, N);
                 end
             end
+        elseif strcmpi(algo, 'xysum')
+            % xysum: окремий result.mat у теках XY\ , OX\ , OY\ (крок = d).
+            % XY — ЄДИНА карта (OX+OY комплексною сумою); включаємо обов'язково.
+            for dirLabel = {'XY','OX','OY'}
+                for si = 1:numel(CFG.xysum.steps)
+                    rf = fullfile(CFG.paths.saveRoot, sampleOut, phaseFolder, algo, ...
+                                  dirLabel{1}, sprintf('step_%d', CFG.xysum.steps(si)), 'result.mat');
+                    agg = accumulate(agg, rf, k, N);
+                end
+            end
         else
             % orthogonal: окремий result.mat у КОЖНІЙ підтеці <OX|OY>\step_N\
             for dirLabel = {'OX','OY'}

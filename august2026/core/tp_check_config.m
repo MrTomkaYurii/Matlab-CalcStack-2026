@@ -40,13 +40,24 @@ if isfield(CFG,'polar')
     end
 end
 
+if isfield(CFG,'xysum')
+    tp_assert(isnumeric(CFG.xysum.steps) && ~isempty(CFG.xysum.steps) ...
+        && all(CFG.xysum.steps >= 1) && all(CFG.xysum.steps == round(CFG.xysum.steps)), ...
+        'CFG.xysum.steps: додатні цілі кроки d (напр. [1] або [1 2 4 8 16 32])');
+    if isfield(CFG.xysum,'posStep')
+        tp_assert(CFG.xysum.posStep >= 1, 'CFG.xysum.posStep (прорідження перших точок) має бути >= 1');
+    end
+end
+
 % Імена алгоритмів (і в CFG.algorithms, і в CFG.horsky.algorithms) — з відомого
 % списку, інакше опечатка ("poler") мовчки нічого не порахує / не збере.
-knownAlgos = {'orthogonal','generalized','polar'};
+knownAlgos = {'orthogonal','generalized','polar','xysum'};
 tp_assert(all(ismember(lower(CFG.algorithms), knownAlgos)), ...
     'CFG.algorithms: лише {%s} (зараз: {%s})', strjoin(knownAlgos, ', '), strjoin(CFG.algorithms, ', '));
 tp_assert(~any(strcmpi(CFG.algorithms,'polar')) || isfield(CFG,'polar'), ...
     'CFG.algorithms містить ''polar'', але секції CFG.polar немає');
+tp_assert(~any(strcmpi(CFG.algorithms,'xysum')) || isfield(CFG,'xysum'), ...
+    'CFG.algorithms містить ''xysum'', але секції CFG.xysum немає');
 if isfield(CFG,'horsky') && isfield(CFG.horsky,'algorithms') && ~isempty(CFG.horsky.algorithms)
     tp_assert(iscell(CFG.horsky.algorithms) && ...
         all(ismember(lower(CFG.horsky.algorithms), knownAlgos)), ...

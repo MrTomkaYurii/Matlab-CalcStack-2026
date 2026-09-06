@@ -134,17 +134,17 @@ for s = 1:numel(CFG.samples)
     % заново — лише пакує вже збережені result.mat цього зразка.
     %
     % Збирач пакує алгоритми зі списку CFG.horsky.algorithms
-    % ({'orthogonal','generalized','polar'} за замовчуванням). Якщо цього
-    % прогону НЕ рахувався жоден із них (напр. CFG.algorithms = {'polar'},
+    % ({'orthogonal','generalized','polar','xysum'} за замовчуванням). Якщо
+    % цього прогону НЕ рахувався жоден із них (напр. CFG.algorithms = {'polar'},
     % а Горський звужений до {'orthogonal'}), збирач пропускаємо: інакше
     % він мовчки перепакував би СТАРІ result.mat з попереднього прогону.
-    horskyWanted = {'orthogonal','generalized','polar'};
+    horskyWanted = {'orthogonal','generalized','polar','xysum'};
     if isfield(CFG,'horsky') && isfield(CFG.horsky,'algorithms') && ~isempty(CFG.horsky.algorithms)
         horskyWanted = CFG.horsky.algorithms;
     end
     if any(ismember(lower(CFG.algorithms), lower(horskyWanted)))
         try
-            [nFilesOrtho, nFilesGen, nFilesPolar] = tp_collect_sample_for_horsky(CFG, sampleName);
+            [nFilesOrtho, nFilesGen, nFilesPolar, nFilesXysum] = tp_collect_sample_for_horsky(CFG, sampleName);
             if nFilesOrtho > 0
                 fprintf('  [Horsky] %s: %d *_orthogonal.mat (по прикладах)\n', sampleName, nFilesOrtho);
             end
@@ -153,6 +153,9 @@ for s = 1:numel(CFG.samples)
             end
             if nFilesPolar > 0
                 fprintf('  [Horsky] %s: %d *_polar.mat (по прикладах)\n', sampleName, nFilesPolar);
+            end
+            if nFilesXysum > 0
+                fprintf('  [Horsky] %s: %d *_xysum.mat (по прикладах)\n', sampleName, nFilesXysum);
             end
         catch ME
             fprintf(2, '  [Horsky fail] %s: %s\n', sampleName, ME.message);
@@ -211,6 +214,7 @@ for a = 1:numel(CFG.algorithms)
         switch lower(algo)                   % крок 2: обчислення f_ik
             case 'orthogonal', R = tp_algo_orthogonal(IMG, CFG, sampleOut);
             case 'polar',      R = tp_algo_polar(IMG, CFG, sampleOut);
+            case 'xysum',      R = tp_algo_xysum(IMG, CFG, sampleOut);
             otherwise
                 warning('run_TwoPoint_Pipeline:algo', 'Невідомий алгоритм "%s" — пропущено.', algo);
                 continue;

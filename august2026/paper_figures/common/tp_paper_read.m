@@ -36,6 +36,14 @@ switch lower(variant.algo)
         rf = fullfile(phaseDir, 'polar', upper(variant.dir), stepFolder, 'result.mat');
         assert(isfile(rf), 'tp_paper_read: немає %s', rf);
         S = load(rf, 'Rd');  R = S.Rd;
+    case 'xysum'
+        % ЄДИНА карта XY (OX+OY, без ділення) або осьові доданки OX/OY;
+        % розкладка тек як в orthogonal (змінна Rd), крок = d.
+        assert(any(strcmpi(variant.dir, {'XY','OX','OY'})), ...
+            'tp_paper_read: для xysum потрібен variant.dir = XY, OX або OY');
+        rf = fullfile(phaseDir, 'xysum', upper(variant.dir), stepFolder, 'result.mat');
+        assert(isfile(rf), 'tp_paper_read: немає %s', rf);
+        S = load(rf, 'Rd');  R = S.Rd;
     otherwise
         error('tp_paper_read: невідомий algo "%s"', variant.algo);
 end
