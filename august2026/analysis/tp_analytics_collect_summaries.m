@@ -82,18 +82,17 @@ for s = 1:numel(CFG.samples)
                 end
             end
 
-            % xysum: <XY|OX|OY>\step_N\result.mat (змінна Rd, крок = d).
-            for dirLabel = {'XY','OX','OY'}
-                dirRoot = fullfile(CFG.paths.saveRoot, phaseOut, 'xysum', dirLabel{1});
-                if ~isfolder(dirRoot), continue; end
-                stepDirs = dir(fullfile(dirRoot, 'step_*'));
+            % XY: ЗВЕДЕНА карта (OX+OY) — step_N\result.mat (змінна R), як generalized.
+            xyRoot = fullfile(CFG.paths.saveRoot, phaseOut, 'XY');
+            if isfolder(xyRoot)
+                stepDirs = dir(fullfile(xyRoot, 'step_*'));
                 for si = 1:numel(stepDirs)
-                    rFile = fullfile(dirRoot, stepDirs(si).name, 'result.mat');
+                    rFile = fullfile(xyRoot, stepDirs(si).name, 'result.mat');
                     if ~isfile(rFile), continue; end
                     step = sscanf(stepDirs(si).name, 'step_%d');
-                    Slx = load(rFile, 'Rd');
-                    rowsCell = appendElementRows(rowsCell, Slx.Rd, sampleName, example, ...
-                        'xysum', dirLabel{1}, step, k, phaseDeg, CFG);
+                    Slx = load(rFile, 'R');
+                    rowsCell = appendElementRows(rowsCell, Slx.R, sampleName, example, ...
+                        'XY', 'XY', step, k, phaseDeg, CFG);
                 end
             end
         end

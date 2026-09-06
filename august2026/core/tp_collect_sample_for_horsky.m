@@ -1,36 +1,36 @@
-function [nFilesOrtho, nFilesGen, nFilesPolar, nFilesXysum] = tp_collect_sample_for_horsky(CFG, sampleName)
+function [nFilesOrtho, nFilesGen, nFilesPolar, nFilesXY] = tp_collect_sample_for_horsky(CFG, sampleName)
 % TP_COLLECT_SAMPLE_FOR_HORSKY  Збирає розкидані result.mat ОДНОГО зразка
 %   в ОКРЕМИЙ файл на КОЖЕН приклад і алгоритм (не зливаючи приклади 1/2/3
 %   в один файл) у CFG.paths.horskyRoot:
 %       <Зразок>_<Приклад>_orthogonal.mat    (змінна всередині: orthogonal)
 %       <Зразок>_<Приклад>_generalized.mat   (змінна всередині: generalized)
 %       <Зразок>_<Приклад>_polar.mat         (змінна всередині: polar)
-%       <Зразок>_<Приклад>_xysum.mat         (змінна всередині: xysum)
+%       <Зразок>_<Приклад>_XY.mat            (змінна всередині: XY)
 %   Читає лише те, що вже є на диску, нічого не рахує. Спільна логіка для:
 %     - run_TwoPoint_Pipeline.m: викликається одразу як зразок дорахований
 %       (Етап 3 ТЗ: "по мірі обчислення надсилати М. Горському"),
 %     - run_TwoPoint_CollectForHorsky.m: окремий запуск на вимогу/повторно.
 %
 %   CFG.horsky.algorithms — який(і) алгоритм(и) збирати: підмножина
-%   {'orthogonal','generalized','polar','xysum'} (за замовчуванням — усі,
+%   {'orthogonal','generalized','polar','XY'} (за замовчуванням — усі,
 %   якщо поле не задане). Корисно, коли один алгоритм ще рахується, а інший
 %   уже готовий і його треба віддати Горському, не чекаючи другого.
 %
-%   nFilesOrtho, nFilesGen, nFilesPolar, nFilesXysum : скільки файлів (на
+%   nFilesOrtho, nFilesGen, nFilesPolar, nFilesXY : скільки файлів (на
 %   приклади) реально записано для кожного алгоритму (0 => або зразок ще не
 %   порахований, або цей алгоритм виключено через CFG.horsky.algorithms).
 
 horskyRoot = CFG.paths.horskyRoot;
 if ~exist(horskyRoot,'dir'); mkdir(horskyRoot); end
 
-horskyAlgos = {'orthogonal','generalized','polar','xysum'};
+horskyAlgos = {'orthogonal','generalized','polar','XY'};
 if isfield(CFG,'horsky') && isfield(CFG.horsky,'algorithms') && ~isempty(CFG.horsky.algorithms)
     horskyAlgos = CFG.horsky.algorithms;
 end
 doOrtho = any(strcmpi(horskyAlgos,'orthogonal'));
 doGen   = any(strcmpi(horskyAlgos,'generalized'));
 doPolar = any(strcmpi(horskyAlgos,'polar'));
-doXysum = any(strcmpi(horskyAlgos,'xysum'));
+doXY    = any(strcmpi(horskyAlgos,'XY'));
 
 examplesList = {''};
 if isfield(CFG.paths,'examples') && ~isempty(CFG.paths.examples)
@@ -38,7 +38,7 @@ if isfield(CFG.paths,'examples') && ~isempty(CFG.paths.examples)
 end
 
 baseName = strrep(sampleName, ' ', '_');
-nFilesOrtho = 0; nFilesGen = 0; nFilesPolar = 0; nFilesXysum = 0;
+nFilesOrtho = 0; nFilesGen = 0; nFilesPolar = 0; nFilesXY = 0;
 
 phaseOn = isfield(CFG,'phase') && isfield(CFG.phase,'enable') && CFG.phase.enable;
 numK = 1; if phaseOn, numK = CFG.phase.numWindows; end
@@ -53,8 +53,8 @@ for ei = 1:numel(examplesList)
         fileBase  = sprintf('%s_%s', baseName, example);
     end
 
-    DataOrtho = struct(); DataGen = struct(); DataPolar = struct(); DataXysum = struct();
-    nLoadedOrtho = 0; nLoadedGen = 0; nLoadedPolar = 0; nLoadedXysum = 0;
+    DataOrtho = struct(); DataGen = struct(); DataPolar = struct(); DataXY = struct();
+    nLoadedOrtho = 0; nLoadedGen = 0; nLoadedPolar = 0; nLoadedXY = 0;
 
     for k = 1:numK
         if phaseOn
@@ -143,36 +143,29 @@ for ei = 1:numel(examplesList)
             end
         end
 
-        % xysum: окремий result.mat у теках XY\ , OX\ , OY\ (крок = d).
-        % XY_step_<d> — ЄДИНА карта: КОМПЛЕКСНА СУМА OX+OY (БЕЗ ділення).
-        % OX/OY_step_<d> — осьові зрізи (анізотропія). Ключ включає крок —
-        % так само як для orthogonal / polar.
-        if doXysum
-            xysumPacked = struct();
-            for dirLabel = {'XY','OX','OY'}
-                dirRoot = fullfile(CFG.paths.saveRoot, phaseOut, 'xysum', dirLabel{1});
-                if ~isfolder(dirRoot), continue; end
-                stepDirs = dir(fullfile(dirRoot, 'step_*'));
+        % XY: ЗВЕДЕНА карта (OX+OY, без усереднення) — окремий result.mat на
+        % кожен крок (тека XY\step_N\, змінна R), як generalized. Ключ = step_N.
+        % Плюс .validCount (0..2 променів на піксель) для нормування у Горського.
+        if doXY
+            xyRoot = fullfile(CFG.paths.saveRoot, phaseOut, 'XY');
+            if isfolder(xyRoot)
+                stepDirs = dir(fullfile(xyRoot, 'step_*'));
+                xyPacked = struct();
                 for si = 1:numel(stepDirs)
-                    rFile = fullfile(dirRoot, stepDirs(si).name, 'result.mat');
+                    rFile = fullfile(xyRoot, stepDirs(si).name, 'result.mat');
                     if ~isfile(rFile), continue; end
-                    S = load(rFile, 'Rd');
-                    key = sprintf('%s_%s', dirLabel{1}, stepDirs(si).name);   % напр. XY_step_1
-                    xysumPacked.(key) = packElements(S.Rd);
-                    % ЄДИНА карта: скільки променів (0..2) увійшло в OX+OY на
-                    % піксель (край кадру < 2) — для нормування на боці Горського.
-                    if strcmp(dirLabel{1}, 'XY') && isfield(S.Rd,'params') ...
-                            && isfield(S.Rd.params,'validCount')
-                        vcName = S.Rd.dirs{1};                       % 'XY_step_<d>'
-                        if isfield(S.Rd.params.validCount, vcName)
-                            xysumPacked.(key).validCount = S.Rd.params.validCount.(vcName);
-                        end
+                    S = load(rFile, 'R');
+                    key = stepDirs(si).name;                         % 'step_1'
+                    xyPacked.(key) = packElements(S.R);
+                    if isfield(S.R,'params') && isfield(S.R.params,'validCount') ...
+                            && isfield(S.R.params.validCount, S.R.dirs{1})
+                        xyPacked.(key).validCount = S.R.params.validCount.(S.R.dirs{1});
                     end
-                    nLoadedXysum = nLoadedXysum + 1;
+                    nLoadedXY = nLoadedXY + 1;
                 end
-            end
-            if ~isempty(fieldnames(xysumPacked))
-                DataXysum = putField(DataXysum, phaseField, xysumPacked);
+                if ~isempty(fieldnames(xyPacked))
+                    DataXY = putField(DataXY, phaseField, xyPacked);
+                end
             end
         end
     end
@@ -192,10 +185,10 @@ for ei = 1:numel(examplesList)
         save(fullfile(horskyRoot, [fileBase '_polar.mat']), 'polar', '-v7.3');
         nFilesPolar = nFilesPolar + 1;
     end
-    if nLoadedXysum > 0
-        xysum = DataXysum;
-        save(fullfile(horskyRoot, [fileBase '_xysum.mat']), 'xysum', '-v7.3');
-        nFilesXysum = nFilesXysum + 1;
+    if nLoadedXY > 0
+        XY = DataXY;
+        save(fullfile(horskyRoot, [fileBase '_XY.mat']), 'XY', '-v7.3');
+        nFilesXY = nFilesXY + 1;
     end
 end
 end

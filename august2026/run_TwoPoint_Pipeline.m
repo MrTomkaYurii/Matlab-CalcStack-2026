@@ -134,17 +134,17 @@ for s = 1:numel(CFG.samples)
     % заново — лише пакує вже збережені result.mat цього зразка.
     %
     % Збирач пакує алгоритми зі списку CFG.horsky.algorithms
-    % ({'orthogonal','generalized','polar','xysum'} за замовчуванням). Якщо
+    % ({'orthogonal','generalized','polar','XY'} за замовчуванням). Якщо
     % цього прогону НЕ рахувався жоден із них (напр. CFG.algorithms = {'polar'},
     % а Горський звужений до {'orthogonal'}), збирач пропускаємо: інакше
     % він мовчки перепакував би СТАРІ result.mat з попереднього прогону.
-    horskyWanted = {'orthogonal','generalized','polar','xysum'};
+    horskyWanted = {'orthogonal','generalized','polar','XY'};
     if isfield(CFG,'horsky') && isfield(CFG.horsky,'algorithms') && ~isempty(CFG.horsky.algorithms)
         horskyWanted = CFG.horsky.algorithms;
     end
     if any(ismember(lower(CFG.algorithms), lower(horskyWanted)))
         try
-            [nFilesOrtho, nFilesGen, nFilesPolar, nFilesXysum] = tp_collect_sample_for_horsky(CFG, sampleName);
+            [nFilesOrtho, nFilesGen, nFilesPolar, nFilesXY] = tp_collect_sample_for_horsky(CFG, sampleName);
             if nFilesOrtho > 0
                 fprintf('  [Horsky] %s: %d *_orthogonal.mat (по прикладах)\n', sampleName, nFilesOrtho);
             end
@@ -154,8 +154,8 @@ for s = 1:numel(CFG.samples)
             if nFilesPolar > 0
                 fprintf('  [Horsky] %s: %d *_polar.mat (по прикладах)\n', sampleName, nFilesPolar);
             end
-            if nFilesXysum > 0
-                fprintf('  [Horsky] %s: %d *_xysum.mat (по прикладах)\n', sampleName, nFilesXysum);
+            if nFilesXY > 0
+                fprintf('  [Horsky] %s: %d *_XY.mat (по прикладах)\n', sampleName, nFilesXY);
             end
         catch ME
             fprintf(2, '  [Horsky fail] %s: %s\n', sampleName, ME.message);
@@ -182,8 +182,11 @@ function rowsCell = runAlgorithms(IMG, CFG, sampleOut, sampleLabel, ctx)
 % rowsCell — рядки аналітики (cell of table), для appendAnalytics.
 
 rowsCell = {};
-for a = 1:numel(CFG.algorithms)
-    algo = CFG.algorithms{a};
+% 'XY' збирається з orthogonal-результату -> завжди обробляємо його ПІСЛЯ
+% решти (зокрема після 'orthogonal'), незалежно від порядку в CFG.algorithms.
+algoOrder = [CFG.algorithms(~strcmpi(CFG.algorithms,'XY')), CFG.algorithms(strcmpi(CFG.algorithms,'XY'))];
+for a = 1:numel(algoOrder)
+    algo = algoOrder{a};
 
     if strcmpi(algo, 'generalized')
         % ПОКРОКОВО: порахував крок -> зберіг -> намалював -> наступний крок.
@@ -209,12 +212,34 @@ for a = 1:numel(CFG.algorithms)
         continue;
     end
 
+    if strcmpi(algo, 'XY')
+        % ЗВЕДЕНА карта: OX + OY (без усереднення) з уже збереженого
+        % orthogonal-результату. По кроках CFG.ortho.steps, як generalized;
+        % f_ik НЕ рахується заново, OX/OY НЕ пересейвляться.
+        for si = 1:numel(CFG.ortho.steps)
+            step = CFG.ortho.steps(si);
+            try
+                R = tp_algo_XY(CFG, sampleOut, step);
+                outDir = fullfile(CFG.paths.saveRoot, sampleOut, 'XY', sprintf('step_%d', step));
+                if ~exist(outDir,'dir'); mkdir(outDir); end
+                save(fullfile(outDir,'result.mat'), 'R', '-v7.3');
+
+                tp_visualize(R, CFG);
+                newRows = tp_analytics_rows_for_result(R, ctx.sample, ctx.example, 'XY', 'XY', ...
+                                                        step, ctx.phase_index, ctx.phase_deg, CFG);
+                rowsCell = [rowsCell, newRows]; %#ok<AGROW>
+            catch ME
+                fprintf(2, '    [fail] %s / XY step_%d: %s\n', sampleLabel, step, ME.message);
+            end
+        end
+        continue;
+    end
+
     try
         t = tic;
         switch lower(algo)                   % крок 2: обчислення f_ik
             case 'orthogonal', R = tp_algo_orthogonal(IMG, CFG, sampleOut);
             case 'polar',      R = tp_algo_polar(IMG, CFG, sampleOut);
-            case 'xysum',      R = tp_algo_xysum(IMG, CFG, sampleOut);
             otherwise
                 warning('run_TwoPoint_Pipeline:algo', 'Невідомий алгоритм "%s" — пропущено.', algo);
                 continue;

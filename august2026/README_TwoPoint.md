@@ -130,15 +130,16 @@ on the raw field (folders collapse back to the pre-phase layout).
   `CFG.polar.montageElements` under `polar/PERP/step_<ρ>/angle_montage/`.
   One `result.mat` per direction+step, like `orthogonal` (variable `Rd`).
   Positioned between `orthogonal` (2 directions) and `generalized` (all vectors).
-- **`xysum`** (`core/algo/xysum/tp_algo_xysum.m`) — the **cross-shaped** scan from
-  doc "…с единой картой" §2, 7–8, but **without** the averaging of §6–7. For each
-  step `d` in `CFG.xysum.steps` the second point sits at `r1+(d,0)` and `r1+(0,d)`;
-  the two axis terms are merged into one map `XY_step_<d>` by a **complex SUM
-  `OX + OY` (no division by 2)** — complex add before modulus/argument. Axis terms
-  `OX`/`OY` are also kept separately (§8, anisotropy). `R.params.validCount` records
-  how many arms (0–2) contributed per pixel. Same as `polar` but on the x/y axes
-  instead of a circle of angles; same `tp_fik_pair` core as every other algorithm.
-  One `result.mat` per direction+step (variable `Rd`).
+- **`XY`** (`core/algo/XY/tp_algo_XY.m`) — the **unified cross map** from doc
+  "…с единой картой" §7: after the horizontal and vertical results are accumulated
+  separately, they are **combined**. Here the combine is a **complex SUM `OX + OY`
+  (no averaging)** — complex add before modulus/argument. It does **not** recompute
+  `f_ik` or re-save `OX`/`OY`: it reads the already-saved
+  `orthogonal/OX/step_<d>/result.mat` + `orthogonal/OY/step_<d>/result.mat` and
+  sums them, so `orthogonal` must be in `CFG.algorithms` (processed first) with both
+  `CFG.ortho.directions`. One map per step `d` in `CFG.ortho.steps` →
+  `XY/step_<d>/result.mat` (variable `R`, like `generalized`).
+  `R.params.validCount` records how many arms (0–2) contributed per pixel.
 
 ## Visualization (per element f_ik, per direction)
 
@@ -233,14 +234,14 @@ handing off to M. Horsky's multifractal-spectrum analysis:
 <Зразок>_<Приклад>_orthogonal.mat    (variable inside: orthogonal)
 <Зразок>_<Приклад>_generalized.mat   (variable inside: generalized)
 <Зразок>_<Приклад>_polar.mat         (variable inside: polar)
-<Зразок>_<Приклад>_xysum.mat         (variable inside: xysum)
+<Зразок>_<Приклад>_XY.mat            (variable inside: XY)
 
 orthogonal.phase_0to<D>deg.<OX_step_D|OY_step_D>.<fXX>.mod/.arg
 generalized.phase_0to<D>deg.step_<D>.<fXX>.mod/.arg
 polar.phase_0to<D>deg.<PERP_step_D|OX_step_D|OY_step_D>.<fXX>.mod/.arg
 polar.phase_0to<D>deg.PERP_step_D.validCount   (extra: N directions summed per pixel)
-xysum.phase_0to<D>deg.<XY_step_D|OX_step_D|OY_step_D>.<fXX>.mod/.arg
-xysum.phase_0to<D>deg.XY_step_D.validCount     (extra: N arms (0-2) summed per pixel)
+XY.phase_0to<D>deg.step_<D>.<fXX>.mod/.arg     (unified OX+OY, no averaging)
+XY.phase_0to<D>deg.step_<D>.validCount         (extra: N arms (0-2) summed per pixel)
 ```
 
 `D` in `phase_0to<D>deg` is the window's upper bound in degrees (whole
@@ -251,10 +252,11 @@ single unified map (complex sum `Σ_θ f` over the polar angle scan, no
 division), `OX/OY_step_D` its θ=0 / θ=90° axial slices, and
 `PERP_step_D.validCount` is the per-pixel count of directions that actually
 entered the sum (`nAngles` in the interior, fewer near the frame edge) —
-forwarded so the ratio scale can be normalised downstream if needed. For
-`xysum`, `XY_step_D` is the same idea on the x/y axes (`OX + OY`, no division)
-with its own `validCount` (0–2 arms per pixel). Which algorithms get collected
-is `CFG.horsky.algorithms` (default: all four).
+forwarded so the ratio scale can be normalised downstream if needed. For `XY`,
+`step_D` is the unified `OX + OY` (no averaging), with its own `validCount`
+(0–2 arms per pixel); `OX`/`OY` themselves are in the `orthogonal` file, not
+duplicated here. Which algorithms get collected is `CFG.horsky.algorithms`
+(default: all four).
 
 **Runs automatically** — `run_TwoPoint_Pipeline.m` calls it the moment a
 sample (all its examples) finishes computing, so each sample's data is
@@ -293,8 +295,8 @@ core/
     tp_algo_generalized.m        ONE pseudo-ACF (2D) diagram per call, for a single step
   algo/polar/
     tp_algo_polar.m              polar angle scan -> PERP (Sum_theta complex, no /N) + OX/OY + angle montage
-  algo/xysum/
-    tp_algo_xysum.m              cross x/y scan -> XY (OX+OY complex, no /2) + OX/OY, per step d
+  algo/XY/
+    tp_algo_XY.m                 unified map: reads orthogonal OX+OY, sums them (complex, no averaging), per step d
   tp_validate.m                  quality control (skip degenerate elements)
   tp_visualize.m                 dispatcher: per dir -> overview + per-element figures
   tp_check_config.m              fail-fast CFG validation
@@ -338,7 +340,7 @@ by `tp_sim_speckle_BT.m` well before this fork).
 | Матрицы Мюллера (1),(6)-(13),(sect.4) — amplitude/phase now read directly from complex Ex,Ey | `core/tp_fik_pair.m` |
 | Ортогонально-направленный (OX и OY, раздельно) | `core/algo/orthogonal/tp_algo_orthogonal.m` |
 | Ортогонально-направленный «с единой картой» (полярная сетка углов → PERP комплексной суммой Σ_θ, без деления) | `core/algo/polar/tp_algo_polar.m` |
-| Ортогонально-направленный «с единой картой» — крест x/y (§2, 7–8), объединение суммой `OX+OY` **без усреднения** §6–7 | `core/algo/xysum/tp_algo_xysum.m` |
+| Ортогонально-направленный «с единой картой» §7 — объединение `OX+OY` в одну карту, **без усреднения** §6–7 (читает orthogonal-результат) | `core/algo/XY/tp_algo_XY.m` |
 | Обобщённый (усреднение по (Δx,Δy), круговое для arg) = "об'єднана мапа XY" | `core/algo/generalized/tp_algo_generalized.m` |
 | Етап 1: фазові вибірки [0,2π]→[0,0.25π] (крок 0.25π, 8 вікон) | `core/tp_phase_window*.m`, wired into `run_TwoPoint_Pipeline.m` |
 | Етап 2.1: модулі/аргументи/гістограми/АКФ (з півшириною)/скелетон+гістограма екстремумів/статистичні моменти(таблиці)/контури | see visualization table above |

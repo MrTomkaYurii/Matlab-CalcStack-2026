@@ -53,7 +53,7 @@ end
 
 fprintf('=== Пошук прогалин ===\n');
 plan = struct('sampleName',{},'example',{},'k',{},'needOrtho',{},'needGenSteps',{}, ...
-              'needPolar',{},'needXysum',{});
+              'needPolar',{},'needXYsteps',{});
 
 for s = 1:numel(CFG.samples)
     sampleName = CFG.samples{s};
@@ -101,21 +101,23 @@ for s = 1:numel(CFG.samples)
                 end
             end
 
-            % xysum: tp_algo_xysum рахує всі напрями (XY/OX/OY) за один виклик ->
-            % досить перевірити ЄДИНУ карту XY на кожен крок d.
-            needXysum = false;
-            if any(strcmpi(CFG.algorithms,'xysum')) && isfield(CFG,'xysum')
-                for si = 1:numel(CFG.xysum.steps)
-                    f = fullfile(CFG.paths.saveRoot, phaseOut, 'xysum', 'XY', ...
-                                 sprintf('step_%d', CFG.xysum.steps(si)), 'result.mat');
-                    if ~isfile(f), needXysum = true; end
+            % XY: ЗВЕДЕНА карта (OX+OY) на кожен крок CFG.ortho.steps (тека
+            % XY\step_<d>\). Перерахунок читає orthogonal OX/OY — якщо їх теж
+            % бракує, needOrtho вище дорахує orthogonal ПЕРШИМ (у циклі нижче
+            % блок orthogonal іде до блоку XY).
+            needXYsteps = [];
+            if any(strcmpi(CFG.algorithms,'XY'))
+                for si = 1:numel(CFG.ortho.steps)
+                    step = CFG.ortho.steps(si);
+                    f = fullfile(CFG.paths.saveRoot, phaseOut, 'XY', sprintf('step_%d', step), 'result.mat');
+                    if ~isfile(f), needXYsteps(end+1) = step; end %#ok<AGROW>
                 end
             end
 
-            if needOrtho || ~isempty(needGenSteps) || needPolar || needXysum
+            if needOrtho || ~isempty(needGenSteps) || needPolar || ~isempty(needXYsteps)
                 plan(end+1) = struct('sampleName',sampleName, 'example',example, 'k',k, ...
                                       'needOrtho',needOrtho, 'needGenSteps',needGenSteps, ...
-                                      'needPolar',needPolar, 'needXysum',needXysum); %#ok<AGROW>
+                                      'needPolar',needPolar, 'needXYsteps',needXYsteps); %#ok<AGROW>
             end
         end
     end
@@ -132,9 +134,13 @@ for i = 1:numel(plan)
     if ~isempty(plan(i).needGenSteps)
         genTxt = ['steps ' mat2str(plan(i).needGenSteps)];
     end
-    fprintf('  %s / %s / k=%d : orthogonal=%d, generalized=%s, polar=%d, xysum=%d\n', ...
+    xyTxt = 'нічого';
+    if ~isempty(plan(i).needXYsteps)
+        xyTxt = ['steps ' mat2str(plan(i).needXYsteps)];
+    end
+    fprintf('  %s / %s / k=%d : orthogonal=%d, generalized=%s, polar=%d, XY=%s\n', ...
             plan(i).sampleName, plan(i).example, plan(i).k, plan(i).needOrtho, genTxt, ...
-            plan(i).needPolar, plan(i).needXysum);
+            plan(i).needPolar, xyTxt);
 end
 
 % ---- дорахувати: групуємо по (sampleName,example), щоб не перечитувати IMG ----
@@ -218,25 +224,19 @@ for p = 1:numel(uniquePairs)
             end
         end
 
-        if it.needXysum
+        for si = 1:numel(it.needXYsteps)
+            step = it.needXYsteps(si);
             try
-                t = tic;
-                R = tp_algo_xysum(IMGk, CFG, sampleOut);
-                fprintf('    [xysum] %s / k=%d : computed in %.1f s\n', sampleLabel, it.k, toc(t));
-                for di = 1:numel(R.dirs)
-                    dirName = R.dirs{di};
-                    sep = R.sep.(dirName);
-                    outDir = fullfile(CFG.paths.saveRoot, phaseOut, 'xysum', sep.direction, sprintf('step_%d', sep.delta));
-                    if ~exist(outDir,'dir'); mkdir(outDir); end
-                    Rd = tp_slice_result_dir(R, dirName);
-                    save(fullfile(outDir,'result.mat'), 'Rd', '-v7.3');
-                    rows = tp_analytics_rows_for_result(Rd, ctx.sample, ctx.example, 'xysum', ...
-                                                         sep.direction, sep.delta, ctx.phase_index, ctx.phase_deg, CFG);
-                    tryAppend(CFG, rows, sampleLabel);
-                end
+                R = tp_algo_XY(CFG, phaseOut, step);   % читає orthogonal OX+OY (уже дорахований вище)
+                outDir = fullfile(CFG.paths.saveRoot, phaseOut, 'XY', sprintf('step_%d', step));
+                if ~exist(outDir,'dir'); mkdir(outDir); end
+                save(fullfile(outDir,'result.mat'), 'R', '-v7.3');
+                rows = tp_analytics_rows_for_result(R, ctx.sample, ctx.example, 'XY', 'XY', ...
+                                                     step, ctx.phase_index, ctx.phase_deg, CFG);
+                tryAppend(CFG, rows, sampleLabel);
                 tp_visualize(R, CFG);
             catch ME
-                fprintf(2, '    [fail] %s / xysum k=%d: %s\n', sampleLabel, it.k, ME.message);
+                fprintf(2, '    [fail] %s / XY step_%d k=%d: %s\n', sampleLabel, step, it.k, ME.message);
             end
         end
 
