@@ -29,6 +29,18 @@ for a = 1:numel(CFG.algorithms)
                               sprintf('step_%d', CFG.gen.steps(si)), 'result.mat');
                 agg = accumulate(agg, rf, k, N);
             end
+        elseif strcmpi(algo, 'polar')
+            % polar: окремий result.mat у теках PERP\ , OX\ , OY\ (крок = радіус rho).
+            % Обов'язково включаємо PERP — це і є ЄДИНА карта полярного алгоритму;
+            % без цієї гілки тренд брав би шлях ортогонального (OX/OY зі списку
+            % CFG.ortho.steps) і мовчки минав PERP.
+            for dirLabel = {'PERP','OX','OY'}
+                for si = 1:numel(CFG.polar.radii)
+                    rf = fullfile(CFG.paths.saveRoot, sampleOut, phaseFolder, algo, ...
+                                  dirLabel{1}, sprintf('step_%d', CFG.polar.radii(si)), 'result.mat');
+                    agg = accumulate(agg, rf, k, N);
+                end
+            end
         else
             % orthogonal: окремий result.mat у КОЖНІЙ підтеці <OX|OY>\step_N\
             for dirLabel = {'OX','OY'}
