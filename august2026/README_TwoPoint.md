@@ -102,7 +102,7 @@ on the raw field (folders collapse back to the pre-phase layout).
 
 ## Two algorithms
 
-- **`orthogonal`** (`core/tp_algo_orthogonal.m`) — for each first point r1,
+- **`orthogonal`** (`core/algo/orthogonal/tp_algo_orthogonal.m`) — for each first point r1,
   the second point r2 is `r1+(d,0)` (→ `OX`) or `r1+(0,d)` (→ `OY`), no
   averaging, one value per pixel. `CFG.ortho.steps` (array, e.g.
   `[1 2 4 8 16 32]`) sets the separation(s) d; `CFG.ortho.directions`
@@ -111,7 +111,7 @@ on the raw field (folders collapse back to the pre-phase layout).
   sliced from the full in-memory result) — not one combined file — so it
   matches `generalized`'s per-step layout and lets tools iterate all of
   them the same way regardless of algorithm.
-- **`generalized`** (`core/tp_algo_generalized.m`) — full 2D separation-
+- **`generalized`** (`core/algo/generalized/tp_algo_generalized.m`) — full 2D separation-
   vector scan (Δx,Δy), averaged over all first points (module: arithmetic;
   argument: circular). This **is** the "combined XY map" the ТЗ asks for —
   no separate merge step needed, it already covers the whole 2D plane.
@@ -249,9 +249,12 @@ core/
   tp_collect_sample_for_horsky.m consolidate ONE sample's result.mat -> <Зразок>.mat (read-only)
   tp_slice.m                     generic nested-struct slicer (any field-name shape)
   tp_fik_pair.m                  formulas (1),(6)-(13),(sect.4) -> 16 complex f_ik, from complex Ex,Ey directly
-  tp_algo_orthogonal.m           OX / OY maps, one call computes ALL CFG.ortho.steps
-  tp_algo_generalized.m          ONE pseudo-ACF (2D) diagram per call, for a single step
   tp_base_result.m               empty canonical result struct
+  algo/orthogonal/
+    tp_algo_orthogonal.m         OX / OY maps, one call computes ALL CFG.ortho.steps
+    tp_slice_result_dir.m        slice full R -> one-direction Rd (per-dir result.mat)
+  algo/generalized/
+    tp_algo_generalized.m        ONE pseudo-ACF (2D) diagram per call, for a single step
   tp_validate.m                  quality control (skip degenerate elements)
   tp_visualize.m                 dispatcher: per dir -> overview + per-element figures
   tp_check_config.m              fail-fast CFG validation
@@ -293,8 +296,8 @@ by `tp_sim_speckle_BT.m` well before this fork).
 | Spec | Implemented in |
 |------|----------------|
 | Матрицы Мюллера (1),(6)-(13),(sect.4) — amplitude/phase now read directly from complex Ex,Ey | `core/tp_fik_pair.m` |
-| Ортогонально-направленный (OX и OY, раздельно) | `core/tp_algo_orthogonal.m` |
-| Обобщённый (усреднение по (Δx,Δy), круговое для arg) = "об'єднана мапа XY" | `core/tp_algo_generalized.m` |
+| Ортогонально-направленный (OX и OY, раздельно) | `core/algo/orthogonal/tp_algo_orthogonal.m` |
+| Обобщённый (усреднение по (Δx,Δy), круговое для arg) = "об'єднана мапа XY" | `core/algo/generalized/tp_algo_generalized.m` |
 | Етап 1: фазові вибірки [0,2π]→[0,0.25π] (крок 0.25π, 8 вікон) | `core/tp_phase_window*.m`, wired into `run_TwoPoint_Pipeline.m` |
 | Етап 2.1: модулі/аргументи/гістограми/АКФ (з півшириною)/скелетон+гістограма екстремумів/статистичні моменти(таблиці)/контури | see visualization table above |
 | Етап 2.2: OX, OY, XY послідовно | `CFG.algorithms = {'orthogonal','generalized'}` |
@@ -303,7 +306,7 @@ by `tp_sim_speckle_BT.m` well before this fork).
 ## Extension points (append, don't rewrite)
 
 - **New sample** → add its folder name (matching `rez_cs\<name>`) to `CFG.samples`.
-- **New algorithm** → add `core/tp_algo_<name>.m` returning a `tp_base_result`
+- **New algorithm** → add `core/algo/<name>/tp_algo_<name>.m` returning a `tp_base_result`
   struct; add a branch in `run_TwoPoint_Pipeline`'s `runAlgorithms` and the
   name to `CFG.algorithms`.
 - **New representation** → add `viz/viz_<name>.m(D, meta, ctx, CFG)`; call it

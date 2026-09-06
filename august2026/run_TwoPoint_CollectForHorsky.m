@@ -27,7 +27,7 @@ function run_TwoPoint_CollectForHorsky(cfgOverride)
 %   (докладніше — README.txt поряд з файлами)
 
 here = fileparts(mfilename('fullpath'));
-addpath(fullfile(here,'config'), fullfile(here,'core'));
+addpath(fullfile(here,'config'), genpath(fullfile(here,'core')));
 
 if nargin >= 1 && isstruct(cfgOverride)
     CFG = cfgOverride;

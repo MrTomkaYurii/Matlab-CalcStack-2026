@@ -5,7 +5,7 @@ function tp_gif_orthogonal(outDir)
 %   власне значення (без усереднення по зображенню).
 %
 %   Використовує ту саму формулу (tp_fik_pair) і той самий спосіб
-%   формування пар, що й core/tp_algo_orthogonal.m, лише на маленькому
+%   формування пар, що й core/algo/orthogonal/tp_algo_orthogonal.m, лише на маленькому
 %   зображенні (N=80) — для швидкості й компактного розміру gif.
 
 CFG = cfg_TwoPoint();
