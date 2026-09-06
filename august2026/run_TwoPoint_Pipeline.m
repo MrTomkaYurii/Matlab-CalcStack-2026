@@ -192,6 +192,7 @@ for a = 1:numel(CFG.algorithms)
         t = tic;
         switch lower(algo)                   % крок 2: обчислення f_ik
             case 'orthogonal', R = tp_algo_orthogonal(IMG, CFG, sampleOut);
+            case 'polar',      R = tp_algo_polar(IMG, CFG, sampleOut);
             otherwise
                 warning('run_TwoPoint_Pipeline:algo', 'Невідомий алгоритм "%s" — пропущено.', algo);
                 continue;

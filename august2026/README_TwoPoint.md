@@ -100,7 +100,7 @@ phase_01_[0-2.00pi]  ...  phase_08_[0-0.25pi]
 Set `CFG.phase.enable = false` to skip windowing entirely and compute once
 on the raw field (folders collapse back to the pre-phase layout).
 
-## Two algorithms
+## Algorithms
 
 - **`orthogonal`** (`core/algo/orthogonal/tp_algo_orthogonal.m`) — for each first point r1,
   the second point r2 is `r1+(d,0)` (→ `OX`) or `r1+(0,d)` (→ `OY`), no
@@ -117,6 +117,19 @@ on the raw field (folders collapse back to the pre-phase layout).
   no separate merge step needed, it already covers the whole 2D plane.
   `CFG.gen.steps` (array, e.g. `[1 2 4 8 16 32]`) sets the grid spacing;
   one `result.mat` per step (`generalized/step_<d>/result.mat`, variable `R`).
+- **`polar`** (`core/algo/polar/tp_algo_polar.m`) — for each first point r1, the
+  second point is scanned around it on a **polar grid of angles**:
+  θ = `0 : CFG.polar.angleStep : CFG.polar.angleMax−angleStep` deg, radius
+  `CFG.polar.radii` px (default `[1]`). All directions are merged into one map
+  `PERP` by a **complex SUM (no division)** — `f⊥(r1) = Σ_θ f_ik(r1, r1+ρ·(cosθ,sinθ))`
+  — the complex add is done *before* modulus/argument (doc "…с единой картой",
+  §7); a second point outside the frame / in a phase-window NaN drops that
+  direction from the sum for that pixel (`R.params.validCount` records how many
+  contributed). Also stores axis maps `OX` (θ=0) and `OY` (θ=90°). Per-angle
+  maps `|f_ik(θ)|` + the sum are dumped as one subplot montage per
+  `CFG.polar.montageElements` under `polar/PERP/step_<ρ>/angle_montage/`.
+  One `result.mat` per direction+step, like `orthogonal` (variable `Rd`).
+  Positioned between `orthogonal` (2 directions) and `generalized` (all vectors).
 
 ## Visualization (per element f_ik, per direction)
 
@@ -255,6 +268,8 @@ core/
     tp_slice_result_dir.m        slice full R -> one-direction Rd (per-dir result.mat)
   algo/generalized/
     tp_algo_generalized.m        ONE pseudo-ACF (2D) diagram per call, for a single step
+  algo/polar/
+    tp_algo_polar.m              polar angle scan -> PERP (Sum_theta complex, no /N) + OX/OY + angle montage
   tp_validate.m                  quality control (skip degenerate elements)
   tp_visualize.m                 dispatcher: per dir -> overview + per-element figures
   tp_check_config.m              fail-fast CFG validation
@@ -297,6 +312,7 @@ by `tp_sim_speckle_BT.m` well before this fork).
 |------|----------------|
 | Матрицы Мюллера (1),(6)-(13),(sect.4) — amplitude/phase now read directly from complex Ex,Ey | `core/tp_fik_pair.m` |
 | Ортогонально-направленный (OX и OY, раздельно) | `core/algo/orthogonal/tp_algo_orthogonal.m` |
+| Ортогонально-направленный «с единой картой» (полярная сетка углов → PERP комплексной суммой Σ_θ, без деления) | `core/algo/polar/tp_algo_polar.m` |
 | Обобщённый (усреднение по (Δx,Δy), круговое для arg) = "об'єднана мапа XY" | `core/algo/generalized/tp_algo_generalized.m` |
 | Етап 1: фазові вибірки [0,2π]→[0,0.25π] (крок 0.25π, 8 вікон) | `core/tp_phase_window*.m`, wired into `run_TwoPoint_Pipeline.m` |
 | Етап 2.1: модулі/аргументи/гістограми/АКФ (з півшириною)/скелетон+гістограма екстремумів/статистичні моменти(таблиці)/контури | see visualization table above |
