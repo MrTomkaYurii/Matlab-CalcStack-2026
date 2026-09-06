@@ -10,36 +10,33 @@ tp_assert(ischar(CFG.source) && any(strcmpi(CFG.source,{'synthetic','real','mat'
 tp_assert(iscell(CFG.samples)  && ~isempty(CFG.samples),  'CFG.samples: непорожній cell-масив імен');
 tp_assert(iscell(CFG.elements) && ~isempty(CFG.elements), 'CFG.elements: непорожній cell-масив (напр. {''f11''})');
 tp_assert(iscell(CFG.algorithms) && ~isempty(CFG.algorithms), 'CFG.algorithms: непорожній cell-масив');
-tp_assert(all(ismember(lower(CFG.algorithms), {'orthogonal','generalized','polar'})), ...
-    'CFG.algorithms: підмножина {''orthogonal'',''generalized'',''polar''}');
 
-if isfield(CFG,'ortho')
-    tp_assert(isnumeric(CFG.ortho.steps) && ~isempty(CFG.ortho.steps) ...
-        && all(CFG.ortho.steps >= 1) && all(CFG.ortho.steps == round(CFG.ortho.steps)), ...
-        'CFG.ortho.steps: додатні цілі рознесення (напр. [1 2 4 8 16])');
-    if isfield(CFG.ortho,'posStep')
-        tp_assert(CFG.ortho.posStep >= 1, 'CFG.ortho.posStep (прорідження перших точок) має бути >= 1');
-    end
-    if isfield(CFG.ortho,'directions')
-        tp_assert(iscell(CFG.ortho.directions) && ~isempty(CFG.ortho.directions) ...
-            && all(ismember(upper(CFG.ortho.directions), {'OX','OY'})), ...
-            'CFG.ortho.directions: підмножина {''OX'',''OY''} (напр. {''OY''})');
-    end
+tp_assert(isfield(CFG,'ortho') && isnumeric(CFG.ortho.steps) && ~isempty(CFG.ortho.steps) ...
+    && all(CFG.ortho.steps >= 1) && all(CFG.ortho.steps == round(CFG.ortho.steps)), ...
+    'CFG.ortho.steps: додатні цілі рознесення (напр. [1 2 4 8 16])');
+if isfield(CFG.ortho,'posStep')
+    tp_assert(CFG.ortho.posStep >= 1, 'CFG.ortho.posStep (прорідження перших точок) має бути >= 1');
+end
+if isfield(CFG.ortho,'directions')
+    tp_assert(iscell(CFG.ortho.directions) && ~isempty(CFG.ortho.directions) ...
+        && all(ismember(upper(CFG.ortho.directions), {'OX','OY'})), ...
+        'CFG.ortho.directions: підмножина {''OX'',''OY''} (напр. {''OY''})');
 end
 
 if isfield(CFG,'polar')
     tp_assert(isnumeric(CFG.polar.radii) && ~isempty(CFG.polar.radii) ...
         && all(CFG.polar.radii >= 1) && all(CFG.polar.radii == round(CFG.polar.radii)), ...
-        'CFG.polar.radii: додатні цілі рознесення rho (напр. [1] або [1 2 4])');
-    tp_assert(isnumeric(CFG.polar.angleStep) && CFG.polar.angleStep > 0 && CFG.polar.angleStep <= 180, ...
-        'CFG.polar.angleStep: крок кута в градусах, (0, 180]');
-    tp_assert(isnumeric(CFG.polar.angleMax) && CFG.polar.angleMax > 0 && CFG.polar.angleMax <= 360, ...
-        'CFG.polar.angleMax: діапазон кутів у градусах, (0, 360]');
+        'CFG.polar.radii: додатні цілі рознесення rho (напр. [1])');
+    tp_assert(isscalar(CFG.polar.angleStep) && CFG.polar.angleStep > 0 && CFG.polar.angleStep <= 180, ...
+        'CFG.polar.angleStep: крок кута в градусах, у (0, 180]');
+    tp_assert(isscalar(CFG.polar.angleMax) && CFG.polar.angleMax > 0 && CFG.polar.angleMax <= 360, ...
+        'CFG.polar.angleMax: діапазон кутів у градусах, у (0, 360]');
     if isfield(CFG.polar,'posStep')
-        tp_assert(CFG.polar.posStep >= 1, 'CFG.polar.posStep має бути >= 1');
+        tp_assert(CFG.polar.posStep >= 1, 'CFG.polar.posStep (прорідження перших точок) має бути >= 1');
     end
     if isfield(CFG.polar,'montageElements')
-        tp_assert(iscell(CFG.polar.montageElements), 'CFG.polar.montageElements: cell-масив імен f_ik');
+        tp_assert(iscell(CFG.polar.montageElements), ...
+            'CFG.polar.montageElements: cell-масив імен елементів (напр. {''f33'',''f44''})');
     end
 end
 
