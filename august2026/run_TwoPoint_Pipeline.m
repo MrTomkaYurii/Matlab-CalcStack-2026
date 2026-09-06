@@ -133,25 +133,26 @@ for s = 1:numel(CFG.samples)
     % ручного запуску run_TwoPoint_CollectForHorsky. Не рахує нічого
     % заново — лише пакує вже збережені result.mat цього зразка.
     %
-    % Збирач читає ЛИШЕ теки orthogonal\ і generalized\ (жорстко в
-    % tp_collect_sample_for_horsky) — 'polar' до Горського не йде. Тому
-    % якщо цього прогону НЕ рахувався жоден алгоритм зі списку Горського
-    % (напр. CFG.algorithms = {'polar'}), збирач пропускаємо: інакше він
-    % мовчки перепакував би СТАРІ orthogonal/generalized result.mat з
-    % попереднього прогону (виглядає, ніби Горському пішли дані від
-    % полярного прогону, хоча це залежаний ортогональний результат).
-    horskyWanted = {'orthogonal','generalized'};
+    % Збирач пакує алгоритми зі списку CFG.horsky.algorithms
+    % ({'orthogonal','generalized','polar'} за замовчуванням). Якщо цього
+    % прогону НЕ рахувався жоден із них (напр. CFG.algorithms = {'polar'},
+    % а Горський звужений до {'orthogonal'}), збирач пропускаємо: інакше
+    % він мовчки перепакував би СТАРІ result.mat з попереднього прогону.
+    horskyWanted = {'orthogonal','generalized','polar'};
     if isfield(CFG,'horsky') && isfield(CFG.horsky,'algorithms') && ~isempty(CFG.horsky.algorithms)
         horskyWanted = CFG.horsky.algorithms;
     end
     if any(ismember(lower(CFG.algorithms), lower(horskyWanted)))
         try
-            [nFilesOrtho, nFilesGen] = tp_collect_sample_for_horsky(CFG, sampleName);
+            [nFilesOrtho, nFilesGen, nFilesPolar] = tp_collect_sample_for_horsky(CFG, sampleName);
             if nFilesOrtho > 0
                 fprintf('  [Horsky] %s: %d *_orthogonal.mat (по прикладах)\n', sampleName, nFilesOrtho);
             end
             if nFilesGen > 0
                 fprintf('  [Horsky] %s: %d *_generalized.mat (по прикладах)\n', sampleName, nFilesGen);
+            end
+            if nFilesPolar > 0
+                fprintf('  [Horsky] %s: %d *_polar.mat (по прикладах)\n', sampleName, nFilesPolar);
             end
         catch ME
             fprintf(2, '  [Horsky fail] %s: %s\n', sampleName, ME.message);

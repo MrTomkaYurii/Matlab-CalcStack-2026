@@ -30,10 +30,12 @@ CFG.paths.matRoot = 'C:\August 2026-Results\rez_cs';
 CFG.paths.horskyRoot = 'C:\August 2026-Results\MOD-ARGS-MM-Горському';
 
 % horsky.algorithms — який(і) алгоритм(и) збирати для Горського: підмножина
-% {'orthogonal','generalized'}. За замовчуванням обидва; звузь до одного,
-% якщо інший ще рахується і не хочеш чекати на нього, щоб віддати вже
-% готове (напр. CFG.horsky.algorithms = {'orthogonal'};).
-CFG.horsky.algorithms = {'orthogonal','generalized'};
+% {'orthogonal','generalized','polar'}. За замовчуванням усі; звузь до
+% одного, якщо інший ще рахується і не хочеш чекати на нього, щоб віддати
+% вже готове (напр. CFG.horsky.algorithms = {'orthogonal'};).
+%   polar -> файл <Зразок>_<Приклад>_polar.mat: PERP_step_d (ЄДИНА карта,
+%   комплексна сума Σ_θ f) + осьові OX/OY_step_d.
+CFG.horsky.algorithms = {'orthogonal','generalized','polar'};
 
 % analyticsRoot — куди наш ВЛАСНИЙ (не за ТЗ, наш бонус) аналітичний шар
 % (analysis/) складає зведену числову таблицю (статистика+ACF HWHM+
