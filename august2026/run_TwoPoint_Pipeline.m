@@ -213,13 +213,13 @@ for a = 1:numel(algoOrder)
     end
 
     if strcmpi(algo, 'XY')
-        % ЗВЕДЕНА карта: OX + OY (без усереднення) з уже збереженого
-        % orthogonal-результату. По кроках CFG.ortho.steps, як generalized;
-        % f_ik НЕ рахується заново, OX/OY НЕ пересейвляться.
+        % ЗВЕДЕНА карта: OX + OY (без усереднення). По кроках CFG.ortho.steps,
+        % як generalized. OX/OY беруться з orthogonal-результату, якщо він на
+        % диску; інакше рахуються в пам'яті з IMG (окремо НЕ зберігаються).
         for si = 1:numel(CFG.ortho.steps)
             step = CFG.ortho.steps(si);
             try
-                R = tp_algo_XY(CFG, sampleOut, step);
+                R = tp_algo_XY(IMG, CFG, sampleOut, step);
                 outDir = fullfile(CFG.paths.saveRoot, sampleOut, 'XY', sprintf('step_%d', step));
                 if ~exist(outDir,'dir'); mkdir(outDir); end
                 save(fullfile(outDir,'result.mat'), 'R', '-v7.3');

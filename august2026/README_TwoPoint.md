@@ -44,7 +44,7 @@ run_TwoPoint_GIF_Demo            % build the two explainer GIFs (small synthetic
 ## Data source
 
 ```
-C:\August 2026-Results\rez_cs\<Зразок>\<Приклад>\mat\ex_<state>.mat, ey_<state>.mat
+C:\August 2026-Results\Зразки - нові (серпень 2026) mat\<Зразок>\<Приклад>\mat\ex_<state>.mat, ey_<state>.mat
 ```
 `<Зразок>` ∈ `{Мозг, Мяз живота, Серце}`, `<Приклад>` ∈ `{1,2,3}`,
 `<state>` ∈ `{0,45,90,135,liv,prav}`. Each `.mat` holds exactly ONE complex
@@ -133,12 +133,15 @@ on the raw field (folders collapse back to the pre-phase layout).
 - **`XY`** (`core/algo/XY/tp_algo_XY.m`) — the **unified cross map** from doc
   "…с единой картой" §7: after the horizontal and vertical results are accumulated
   separately, they are **combined**. Here the combine is a **complex SUM `OX + OY`
-  (no averaging)** — complex add before modulus/argument. It does **not** recompute
-  `f_ik` or re-save `OX`/`OY`: it reads the already-saved
-  `orthogonal/OX/step_<d>/result.mat` + `orthogonal/OY/step_<d>/result.mat` and
-  sums them, so `orthogonal` must be in `CFG.algorithms` (processed first) with both
-  `CFG.ortho.directions`. One map per step `d` in `CFG.ortho.steps` →
-  `XY/step_<d>/result.mat` (variable `R`, like `generalized`).
+  (no averaging)** — complex add before modulus/argument. It does **not** re-save
+  `OX`/`OY`. Source of `OX`/`OY`: reads `orthogonal/OX/step_<d>/result.mat` +
+  `.../OY/...` **if present on disk** (nothing recomputed); otherwise computes the
+  two shifts in memory from `IMG` (2 `tp_fik_pair` calls). So `orthogonal` in
+  `CFG.algorithms` is **optional** — `{'XY'}` alone works. One map per step `d`
+  in `CFG.ortho.steps` → `XY/step_<d>/result.mat` (variable `R`, like
+  `generalized`). `CFG.XY.normalize` (default `true`): divides all elements by
+  `median(|XY_11|)` → `m_ik`, values `O(1)` not `~1e-6` (scalar division only,
+  arg and spatial structure unchanged; `R.params.normScale`).
   `R.params.validCount` records how many arms (0–2) contributed per pixel.
 
 ## Visualization (per element f_ik, per direction)
@@ -296,7 +299,7 @@ core/
   algo/polar/
     tp_algo_polar.m              polar angle scan -> PERP (Sum_theta complex, no /N) + OX/OY + angle montage
   algo/XY/
-    tp_algo_XY.m                 unified map: reads orthogonal OX+OY, sums them (complex, no averaging), per step d
+    tp_algo_XY.m                 unified map: OX+OY summed (complex, no averaging), per step d; OX/OY from disk or recomputed in memory
   tp_validate.m                  quality control (skip degenerate elements)
   tp_visualize.m                 dispatcher: per dir -> overview + per-element figures
   tp_check_config.m              fail-fast CFG validation
@@ -340,7 +343,7 @@ by `tp_sim_speckle_BT.m` well before this fork).
 | Матрицы Мюллера (1),(6)-(13),(sect.4) — amplitude/phase now read directly from complex Ex,Ey | `core/tp_fik_pair.m` |
 | Ортогонально-направленный (OX и OY, раздельно) | `core/algo/orthogonal/tp_algo_orthogonal.m` |
 | Ортогонально-направленный «с единой картой» (полярная сетка углов → PERP комплексной суммой Σ_θ, без деления) | `core/algo/polar/tp_algo_polar.m` |
-| Ортогонально-направленный «с единой картой» §7 — объединение `OX+OY` в одну карту, **без усреднения** §6–7 (читает orthogonal-результат) | `core/algo/XY/tp_algo_XY.m` |
+| Ортогонально-направленный «с единой картой» §7 — объединение `OX+OY` в одну карту, **без усреднения** §6–7 (OX/OY с диска или из памяти) | `core/algo/XY/tp_algo_XY.m` |
 | Обобщённый (усреднение по (Δx,Δy), круговое для arg) = "об'єднана мапа XY" | `core/algo/generalized/tp_algo_generalized.m` |
 | Етап 1: фазові вибірки [0,2π]→[0,0.25π] (крок 0.25π, 8 вікон) | `core/tp_phase_window*.m`, wired into `run_TwoPoint_Pipeline.m` |
 | Етап 2.1: модулі/аргументи/гістограми/АКФ (з півшириною)/скелетон+гістограма екстремумів/статистичні моменти(таблиці)/контури | see visualization table above |
@@ -349,7 +352,7 @@ by `tp_sim_speckle_BT.m` well before this fork).
 
 ## Extension points (append, don't rewrite)
 
-- **New sample** → add its folder name (matching `rez_cs\<name>`) to `CFG.samples`.
+- **New sample** → add its folder name (matching `<matRoot>\<name>`) to `CFG.samples`.
 - **New algorithm** → add `core/algo/<name>/tp_algo_<name>.m` returning a `tp_base_result`
   struct; add a branch in `run_TwoPoint_Pipeline`'s `runAlgorithms` and the
   name to `CFG.algorithms`.

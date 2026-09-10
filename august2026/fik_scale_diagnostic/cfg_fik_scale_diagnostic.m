@@ -13,7 +13,7 @@ function C = cfg_fik_scale_diagnostic()
 C = struct();
 
 % --- звідки беремо сирі поля (той самий root, що cfg_TwoPoint.CFG.paths.matRoot) ---
-C.matRoot = 'C:\August 2026-Results\rez_cs';
+C.matRoot = 'C:\August 2026-Results\Зразки - нові (серпень 2026) mat';
 C.resultRoot = 'C:\August 2026-Results\Розрахунки - Двот. елем. ММ';  % готові result.mat (для s1)
 
 % --- ОСНОВНИЙ приклад для покрокового розбору ------------------------------

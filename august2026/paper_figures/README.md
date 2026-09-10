@@ -66,8 +66,8 @@ make_stats_table           % лише таблиці моментів (.txt + .d
 Fig1/ color/ svg/ generalized/  Fig1.f33-f44.generalized.heart.zrazok1.color.svg
                                  (+ Fig1.f23-f24. ... поряд)
              svg/ OX/|OY/  ...   png/|pdf/ <те саме>   gray/ <те саме>
-      stats.moments.txt/.docx    (таблиці моментів цього рисунка — тут)
-Fig2/ ... (stats.acf)   Fig3/ ... (stats.psd)   ...   Fig7/ ... (stats.mueller)
+      stats.moments.<variant>.txt/.docx   (моменти цього рисунка — окремий файл на алгоритм)
+Fig2/ ... (stats.acf.<variant>)   Fig3/ ... (stats.psd.<variant>)   ...   Fig7/ ... (stats.mueller.<variant>)
 ```
 
 Теги зразків: `heart` / `muscle` / `brain`; приклад — `FIG.exampleTag`

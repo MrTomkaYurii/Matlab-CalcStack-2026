@@ -18,7 +18,8 @@ function run_all_figures(FIG)
 %     8) stats.moments / acf / psd / skeleton / wavelet / multifractal / mueller  (.txt + .docx)
 %
 %   Шлях: .../FigN/<color|gray>/<svg|pdf|png>/<generalized|OX|OY>/<файл>
-%   Таблиці моментів — у теці свого рисунка: .../FigN/stats.<набір>.txt/.docx
+%   Таблиці моментів — у теці свого рисунка, окремий файл на алгоритм:
+%   .../FigN/stats.<набір>.<variant>.txt/.docx
 %
 %   Що САМЕ будувати — FIG.build (cfg_figures.m). Забери завдання зі списку —
 %   воно пропускається. Поодинокі рисунки й далі: make_figN_xxx(cfg_figures()).

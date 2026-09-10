@@ -102,9 +102,9 @@ for s = 1:numel(CFG.samples)
             end
 
             % XY: ЗВЕДЕНА карта (OX+OY) на кожен крок CFG.ortho.steps (тека
-            % XY\step_<d>\). Перерахунок читає orthogonal OX/OY — якщо їх теж
-            % бракує, needOrtho вище дорахує orthogonal ПЕРШИМ (у циклі нижче
-            % блок orthogonal іде до блоку XY).
+            % XY\step_<d>\). Перерахунок бере OX/OY з orthogonal-результату,
+            % якщо він на диску; інакше рахує їх з IMGk. Якщо 'orthogonal' теж
+            % у списку — блок orthogonal у циклі нижче йде ПЕРЕД блоком XY.
             needXYsteps = [];
             if any(strcmpi(CFG.algorithms,'XY'))
                 for si = 1:numel(CFG.ortho.steps)
@@ -227,7 +227,7 @@ for p = 1:numel(uniquePairs)
         for si = 1:numel(it.needXYsteps)
             step = it.needXYsteps(si);
             try
-                R = tp_algo_XY(CFG, phaseOut, step);   % читає orthogonal OX+OY (уже дорахований вище)
+                R = tp_algo_XY(IMGk, CFG, phaseOut, step);   % OX+OY з диску або з IMGk
                 outDir = fullfile(CFG.paths.saveRoot, phaseOut, 'XY', sprintf('step_%d', step));
                 if ~exist(outDir,'dir'); mkdir(outDir); end
                 save(fullfile(outDir,'result.mat'), 'R', '-v7.3');

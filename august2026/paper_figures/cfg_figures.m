@@ -25,7 +25,7 @@ FIG = struct();
 %% 1 ─── ВИВІД ─────────────────────────────────────────────────────────────
 %   Структура теки виводу:
 %     FIG.out.root\ FigN\ <color|gray>\ <svg|pdf|png>\ <generalized|OX|OY>\ <файл>
-%                        FigN\ stats.<набір>.txt / .docx   (таблиці моментів)
+%                        FigN\ stats.<набір>.<variant>.txt / .docx  (таблиці моментів; окремий файл на алгоритм)
 FIG.out.root    = 'C:\August 2026-Results\Розрахунки - Скомпановані рисунки';
 FIG.out.formats = {'svg','pdf','png'};   % 'tiff' повернути у список для фіналу журналу
 FIG.out.tiffDPI = 600;   % растровий TIFF (фінал): 300 фото / 600 змішане / 1200 штрих
@@ -38,8 +38,14 @@ FIG.out.pngDPI  = 300;   % PNG — прев'ю / вставити у Word чи �
 %     'Fig3:f23f24'      — лише одна пара цього рисунка (':f33f44' / ':f23f24')
 %     'Fig7'             — повна матриця Мюллера (усі 16, один рисунок)
 %     'stats'            — таблиці моментів (.txt + .docx) обраних рисунків
+%   ТІЛЬКИ статистика (рисунки НЕ перемальовувати, лишити вже наявні):
+%     FIG.build = {'stats'}            -> таблиці для УСІХ рисунків
+%     FIG.build = {'Fig1','stats'}     -> таблиці лише Fig1
+%   run_all_figures при цьому пропустить рендер і зробить лише make_stats_table;
+%   те саме напряму: make_stats_table(cfg_figures())
 %   Поодинокі рисунки й далі запускаються напряму: make_fig3_f23_f24(cfg_figures())
-FIG.build = {'Fig1','Fig2','Fig3','Fig4','Fig5','Fig6','Fig7','stats'};
+FIG.build = {'stats'};   % ЗАРАЗ: лише таблиці моментів для всіх Fig1..Fig7 (рисунки не чіпаємо)
+% FIG.build = {'Fig1','Fig2','Fig3','Fig4','Fig5','Fig6','Fig7','stats'};   % повний прогін (рисунки + таблиці)
 
 %% 3 ─── ДЖЕРЕЛО ДАНИХ ────────────────────────────────────────────────────
 FIG.data.saveRoot = 'C:\August 2026-Results\Розрахунки - Двот. елем. ММ';
@@ -77,9 +83,10 @@ FIG.exampleTag = 'zrazok';
 % інакше рисунок для нього друкує "[skip] ... немає result.mat" і пропускається.
 FIG.variants = {};
 FIG.variants{end+1} = struct('tag','XY',          'algo','XY',          'dir',''    );   % ЗВЕДЕНА карта OX+OY
-% FIG.variants{end+1} = struct('tag','generalized', 'algo','generalized', 'dir',''    );   % повний 2D-скан (Δx,Δy)
-% FIG.variants{end+1} = struct('tag','OX',          'algo','orthogonal',  'dir','OX'  );   % ортогональний, зсув по x
-% FIG.variants{end+1} = struct('tag','OY',          'algo','orthogonal',  'dir','OY'  );   % ортогональний, зсув по y
+FIG.variants{end+1} = struct('tag','generalized', 'algo','generalized', 'dir',''    );   % повний 2D-скан (Δx,Δy)
+FIG.variants{end+1} = struct('tag','OX',          'algo','orthogonal',  'dir','OX'  );   % ортогональний, зсув по x
+FIG.variants{end+1} = struct('tag','OY',          'algo','orthogonal',  'dir','OY'  );   % ортогональний, зсув по y
+% --- полярний алгоритм: result.mat ще НЕ порахований (у даних лише XY/generalized/orthogonal) ---
 % FIG.variants{end+1} = struct('tag','PERP',        'algo','polar',       'dir','PERP');   % полярна ЄДИНА карта (Σ_θ f)
 % FIG.variants{end+1} = struct('tag','polarOX',     'algo','polar',       'dir','OX'  );   % полярний зріз theta=0
 % FIG.variants{end+1} = struct('tag','polarOY',     'algo','polar',       'dir','OY'  );   % полярний зріз theta=90
@@ -99,10 +106,11 @@ FIG.phase(2) = struct('glob','phase_06_*', 'label','0 - 0.75\pi');
 %   Fig7 — уся матриця Мюллера (окрема секція FIG.fig07).
 
 % --- 5a. Спільний охват за замовчуванням (діє на КОЖЕН рисунок) -----------
-def.samples  = {'Серце','Мяз живота','Мозг'};   % які тканини
+def.samples  = {'Серце','Мяз живота','Мозг'};   % усі 3 тканини (усі, що є в даних)
 def.examples = {'1','2','3'};                    % які приклади (підтеки 1/2/3)
-% Варіанти = усі, розкоментовані в FIG.variants вище (зараз лише XY). Тобто
-% щоб додати generalized/OX/OY/PERP до компоновки — розкоментуй їх там, а не тут.
+% Варіанти = усі, розкоментовані в FIG.variants вище (зараз XY + generalized +
+% OX + OY; полярний закоментований — даних ще нема). Щоб додати/прибрати —
+% правити список FIG.variants, а не тут.
 def.variants = FIG.variants;
 
 % --- 5b. Секції рисунків (будуються з def; НЕ чіпати — правити 5c/5d) -----
@@ -153,111 +161,113 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
 % FIG.fig01_f33f44.params.geom.histH     = 26;
 % FIG.fig07.params.color.modClipPct      = 2;
 
-%% 6 ─── МАКЕТ (геометрія панелей, мм) ────────────────────────────────────
-%   16 панелей = 4 стовпці x 4 ряди: ряд1 карти(вікно1) / ряд2 низ / ряд3
-%   карти(вікно2) / ряд4 низ. Стовпці: |f_a| arg(f_a) |f_b| arg(f_b).
-%   Літери (a)..(p) — ПІД кожною панеллю; підпис фаз. вікна — НАД блоком.
-%
-%   Розмір фігури НЕ фіксуємо (figSize=[]): рахується з контенту. Значення —
-%   АБСТРАКТНІ пропорції (мм): позиція осі = мм / повний абстрактний розмір.
-FIG.geom.figSize = [];       % [] -> з контенту; [W H] см -> зафіксувати під журнал
-FIG.geom.aspectW     = 180;  % абстрактна повна ширина
-FIG.geom.marginL     = 15;   % ліворуч: вісь y карти стовпця 1
-FIG.geom.marginR     = 6;    % праворуч
-FIG.geom.marginT     = 4;    % зверху (навмисно = blockGap)
-FIG.geom.marginB     = 6;    % знизу
-FIG.geom.colGap      = 13;   % ВЕЛИКИЙ: у проміжок має вміститись вісь y НАСТУПНОЇ карти
-FIG.geom.phaseHdrH   = 9;    % смуга підпису фазового вікна + лінія
-FIG.geom.cbarStripH  = 1.8;  % кольорова смужка горизонтального colorbar-а (над картою)
-FIG.geom.cbarTickH   = 6;    % цифри під смужкою colorbar-а
-FIG.geom.titleH      = 6;    % заголовок стовпця (|f_a|, arg(f_a))
-FIG.geom.histH       = 23;   % висота ряду гістограм
-FIG.geom.surf3dH     = 34;   % висота ряду 3D-поверхонь (Fig2, ряди 2,4)
-%   Зона ПІД панеллю = axisLabelH + letterGap + <висота літери> + letterGap.
-%   Відступ НАД літерою (від підпису осі) і ПІД нею (до наступної панелі) —
-%   ОДНАКОВІ = letterGap.
-FIG.geom.axisLabelH   = 7.5;  % цифри осі x + назва осі під панеллю (10pt Arial)
-FIG.geom.surf3dLabelH = 11;   % те саме для 3D-поверхні (проєкційні підписи нижчі)
-FIG.geom.letterGap    = 2.2;  % ОДНАКОВИЙ відступ понад і під літерою панелі
-FIG.geom.blockGap     = 4;    % між блоком фаз. вікна 1 і блоком 2 (навмисно = marginT)
+    %% 6 ─── МАКЕТ (геометрія панелей, мм) ────────────────────────────────────
+    %   16 панелей = 4 стовпці x 4 ряди: ряд1 карти(вікно1) / ряд2 низ / ряд3
+    %   карти(вікно2) / ряд4 низ. Стовпці: |f_a| arg(f_a) |f_b| arg(f_b).
+    %   Літери (a)..(p) — ПІД кожною панеллю; підпис фаз. вікна — НАД блоком.
+    %
+    %   Розмір фігури НЕ фіксуємо (figSize=[]): рахується з контенту. Значення —
+    %   АБСТРАКТНІ пропорції (мм): позиція осі = мм / повний абстрактний розмір.
+    FIG.geom.figSize = [];       % [] -> з контенту; [W H] см -> зафіксувати під журнал
+    FIG.geom.aspectW     = 180;  % абстрактна повна ширина
+    FIG.geom.marginL     = 15;   % ліворуч: вісь y карти стовпця 1
+    FIG.geom.marginR     = 6;    % праворуч
+    FIG.geom.marginT     = 4;    % зверху (навмисно = blockGap)
+    FIG.geom.marginB     = 6;    % знизу
+    FIG.geom.colGap      = 13;   % ВЕЛИКИЙ: у проміжок має вміститись вісь y НАСТУПНОЇ карти
+    FIG.geom.phaseHdrH   = 9;    % смуга підпису фазового вікна + лінія
+    FIG.geom.cbarStripH  = 1.8;  % кольорова смужка горизонтального colorbar-а (над картою)
+    FIG.geom.cbarTickH   = 6;    % цифри під смужкою colorbar-а
+    FIG.geom.titleH      = 6;    % заголовок стовпця (|f_a|, arg(f_a))
+    FIG.geom.histH       = 23;   % висота ряду гістограм
+    FIG.geom.surf3dH     = 34;   % висота ряду 3D-поверхонь (Fig2, ряди 2,4)
+    %   Зона ПІД панеллю = axisLabelH + letterGap + <висота літери> + letterGap.
+    %   Відступ НАД літерою (від підпису осі) і ПІД нею (до наступної панелі) —
+    %   ОДНАКОВІ = letterGap.
+    FIG.geom.axisLabelH   = 7.5;  % цифри осі x + назва осі під панеллю (10pt Arial)
+    FIG.geom.surf3dLabelH = 11;   % те саме для 3D-поверхні (проєкційні підписи нижчі)
+    FIG.geom.letterGap    = 2.2;  % ОДНАКОВИЙ відступ понад і під літерою панелі
+    FIG.geom.blockGap     = 4;    % між блоком фаз. вікна 1 і блоком 2 (навмисно = marginT)
+    
+    %% 7 ─── ШРИФТ / ЛІНІЇ / ЛІТЕРИ ───────────────────────────────────────────
+    FIG.font.name = 'Arial';
+    FIG.font.size = 10;          % ЄДИНИЙ кегль: осі, цифри, заголовки, літери
+    FIG.line.axis = 0.75;        % pt, товщина рамки осей
+    FIG.panel.letterStyle = '(a)';   % '(a)' | 'a)' | 'a' | '(A)'
+    FIG.panel.letterBold  = false;   % літери під панелями — звичайні
+    
+    %% 8 ─── КОЛЬОРИ ─────────────────────────────────────────────────────────
+    %   Кожен рисунок будується у ДВОХ варіантах — 'color' і 'gray' — в окремі
+    %   підтеки. FIG.color.modes задає перелік.
+    FIG.color.modes = {'color', 'gray'};
+    FIG.color.maps.color = struct('mod','jet',  'arg','jet');    % jet (школа Ушенка)
+    FIG.color.maps.gray  = struct('mod','gray', 'arg','gray');   % ЧБ (друк / colour-safe)
+    %   У 'gray' аргумент — лінійний -pi(чорний)..+pi(білий); розрив на ±pi неминучий.
+    FIG.color.argClim    = [-pi pi];   % фіксовані межі colorbar-а аргументу
+    FIG.color.modClipPct = 0;          % 0 = сирі min/max; >0 -> [prctile(p) .. prctile(100-p)]
+    FIG.color.nan        = [1 1 1];    % колір NaN-пікселів (край без пари / поза вікном)
+    
+    %% 9 ─── ОСІ КАРТ + СІТКА ────────────────────────────────────────────────
+    FIG.axis.unit     = 'px';       % одиниці осей карт
+    FIG.axis.yDir     = 'normal';   % 'normal' (y вгору) | 'reverse' (як зображення)
+    FIG.map.grid      = true;       % сітка поверх карт
+    FIG.map.gridColor = [1 1 1];
+    FIG.map.gridAlpha = 0.35;
+    FIG.map.nGrid     = 4;          % орієнтовно стільки поділок сітки
+    %   Осі 2D-карт Fig2/Fig3 — ЗІ ЗНАКОМ, центр у 0 (лаг АКФ / частота спектра);
+    %   правило "без відʼємних" — лише для просторових карт Fig1.
+    
+    %% 10 ─── ГІСТОГРАМИ ─────────────────────────────────────────────────────
+    FIG.hist.nbins = 40;            % однакові для панелей одного типу -> однакова ширина
+    FIG.hist.norm  = 'count';       % 'count' | 'probability' | 'pdf'
+    FIG.hist.fill  = [0.55 0.55 0.55];
+    FIG.hist.edge  = [0 0 0];
+    FIG.hist.edgeW = 0.3;           % pt
 
-%% 7 ─── ШРИФТ / ЛІНІЇ / ЛІТЕРИ ───────────────────────────────────────────
-FIG.font.name = 'Arial';
-FIG.font.size = 10;          % ЄДИНИЙ кегль: осі, цифри, заголовки, літери
-FIG.line.axis = 0.75;        % pt, товщина рамки осей
-FIG.panel.letterStyle = '(a)';   % '(a)' | 'a)' | 'a' | '(A)'
-FIG.panel.letterBold  = false;   % літери під панелями — звичайні
-
-%% 8 ─── КОЛЬОРИ ─────────────────────────────────────────────────────────
-%   Кожен рисунок будується у ДВОХ варіантах — 'color' і 'gray' — в окремі
-%   підтеки. FIG.color.modes задає перелік.
-FIG.color.modes = {'color', 'gray'};
-FIG.color.maps.color = struct('mod','jet',  'arg','jet');    % jet (школа Ушенка)
-FIG.color.maps.gray  = struct('mod','gray', 'arg','gray');   % ЧБ (друк / colour-safe)
-%   У 'gray' аргумент — лінійний -pi(чорний)..+pi(білий); розрив на ±pi неминучий.
-FIG.color.argClim    = [-pi pi];   % фіксовані межі colorbar-а аргументу
-FIG.color.modClipPct = 0;          % 0 = сирі min/max; >0 -> [prctile(p) .. prctile(100-p)]
-FIG.color.nan        = [1 1 1];    % колір NaN-пікселів (край без пари / поза вікном)
-
-%% 9 ─── ОСІ КАРТ + СІТКА ────────────────────────────────────────────────
-FIG.axis.unit     = 'px';       % одиниці осей карт
-FIG.axis.yDir     = 'normal';   % 'normal' (y вгору) | 'reverse' (як зображення)
-FIG.map.grid      = true;       % сітка поверх карт
-FIG.map.gridColor = [1 1 1];
-FIG.map.gridAlpha = 0.35;
-FIG.map.nGrid     = 4;          % орієнтовно стільки поділок сітки
-%   Осі 2D-карт Fig2/Fig3 — ЗІ ЗНАКОМ, центр у 0 (лаг АКФ / частота спектра);
-%   правило "без відʼємних" — лише для просторових карт Fig1.
-
-%% 10 ─── ГІСТОГРАМИ ─────────────────────────────────────────────────────
-FIG.hist.nbins = 40;            % однакові для панелей одного типу -> однакова ширина
-FIG.hist.norm  = 'count';       % 'count' | 'probability' | 'pdf'
-FIG.hist.fill  = [0.55 0.55 0.55];
-FIG.hist.edge  = [0 0 0];
-FIG.hist.edgeW = 0.3;           % pt
-
-%% 11 ─── АНАЛІТИКА ─────────────────────────────────────────────────────
-%   Усе рахується "на льоту" з тих самих сирих карт (core\tp_acf_psd.m,
-%   core\tp_multifractal.m), від СИРИХ mod/arg.
-
-% -- АКФ (Fig2) -----------------------------------------------------------
-FIG.acf.method   = 'fast';      % 'fast' (Wiener-Khinchin) | 'direct' (xcorr2)
-FIG.acf.cropFrac = 0.5;         % показувати центральні ±(cropFrac*макс. лаг) 2D-АКФ
-FIG.acf.hwLevel  = 0.5;         % рівень контуру напівширини на 2D-АКФ (ряди карт)
-FIG.acf.hwColor  = [0 0 0];
-FIG.acf.hwW      = 1.3;         % pt
-FIG.acf.surf3dN    = 90;        % цільова сітка 3D-поверхні (даунсемпл важкої АКФ)
-FIG.acf.surf3dView = [-40 40];  % кут огляду [az el]
-FIG.acf.surf3dEdge = [];        % [] -> чиста кольорова поверхня; [r g b] -> тонка сітка
-FIG.acf.cut      = 'x';         % напрям 1D-перерізу для ЧИСЛА довжини кореляції: 'x'|'y'|'radial'
-
-% -- PSD (Fig3) -----------------------------------------------------------
-FIG.psd.cropFrac = 0.5;         % центральні ±(cropFrac*0.5) нормованої частоти
-FIG.psd.log      = true;        % показувати log10(PSD)
-FIG.psd.clipPct  = 1;           % межі colorbar-а за перцентилями (0 = сирі min/max)
-
-% -- вейвлет W(a,b) (Fig5) + скелетон (Fig4) ----------------------------
-FIG.wav.profile    = 'center_row';  % 'center_row' | 'center_col' | 'mean_row'
-FIG.wav.wavelet    = 'amor';        % аналітичний вейвлет Морле
-FIG.wav.voices     = 12;            % голосів на октаву
-FIG.wav.scaleRange = [1 120];       % масштаби a у цьому діапазоні (px)
-FIG.wav.yscale     = 'log';         % вісь масштабу a: 'log' | 'linear'
-FIG.wav.coiMask    = true;          % за конусом впливу |W| -> NaN
-FIG.wav.clipPct    = 1;             % межі colorbar-а |W| за перцентилями
-FIG.skel.markerSize = 1;            % площа маркера scatter (pt^2); малий -> лінії не зливаються
-
-% -- мультифрактали (Fig6) --------------------------------------------
-FIG.mfr.qRange = -5:0.2:5;      % діапазон/крок q (дрібний крок біля 0 -> суцільна арка f(h))
-FIG.mfr.row1   = 'Dq';         % ряд 1: 'Dq' | 'tau' | 'hq'
-FIG.mfr.line   = [0.20 0.35 0.75];   % колір кривих
-FIG.mfr.lineW  = 1.3;          % pt
-FIG.mfr.marker = 3;            % розмір маркерів на кривій (pt)
-
-%% 12 ─── ТАБЛИЦІ МОМЕНТІВ ─────────────────────────────────────────────
-%   make_stats_table -> FigN\stats.<набір>.txt (вирівняні колонки) + .docx
-%   (у стилі журналу). Набори: moments/acf/psd/skeleton/wavelet/multifractal/
-%   mueller. Обсяг = FIG.build (секція 2).
-FIG.stats.excessKurt = false;  % false: звичайний ексцес (норма 3); true: надлишковий (норма 0)
-FIG.stats.docx       = true;   % будувати .docx (потребує MATLAB Report Generator)
+        %% 11 ─── АНАЛІТИКА ─────────────────────────────────────────────────────
+        %   Усе рахується "на льоту" з тих самих сирих карт (core\tp_acf_psd.m,
+        %   core\tp_multifractal.m), від СИРИХ mod/arg.
+    
+        % -- АКФ (Fig2) -----------------------------------------------------------
+        FIG.acf.method   = 'fast';      % 'fast' (Wiener-Khinchin) | 'direct' (xcorr2)
+        FIG.acf.cropFrac = 0.5;         % показувати центральні ±(cropFrac*макс. лаг) 2D-АКФ
+        FIG.acf.hwLevel  = 0.5;         % рівень контуру напівширини на 2D-АКФ (ряди карт)
+        FIG.acf.hwColor  = [0 0 0];
+        FIG.acf.hwW      = 1.3;         % pt
+        FIG.acf.surf3dN    = 90;        % цільова сітка 3D-поверхні (даунсемпл важкої АКФ)
+        FIG.acf.surf3dView = [-40 40];  % кут огляду [az el]
+        FIG.acf.surf3dEdge = [];        % [] -> чиста кольорова поверхня; [r g b] -> тонка сітка
+        FIG.acf.cut      = 'x';         % напрям 1D-перерізу для ЧИСЛА довжини кореляції: 'x'|'y'|'radial'
+    
+        % -- PSD (Fig3) -----------------------------------------------------------
+        FIG.psd.cropFrac = 0.5;         % центральні ±(cropFrac*0.5) нормованої частоти
+        FIG.psd.log      = true;        % показувати log10(PSD)
+        FIG.psd.clipPct  = 1;           % межі colorbar-а за перцентилями (0 = сирі min/max)
+    
+        % -- вейвлет W(a,b) (Fig5) + скелетон (Fig4) ----------------------------
+        FIG.wav.profile    = 'center_row';  % 'center_row' | 'center_col' | 'mean_row'
+        FIG.wav.wavelet    = 'amor';        % аналітичний вейвлет Морле
+        FIG.wav.voices     = 12;            % голосів на октаву
+        FIG.wav.scaleRange = [1 120];       % масштаби a у цьому діапазоні (px)
+        FIG.wav.yscale     = 'log';         % вісь масштабу a: 'log' | 'linear'
+        FIG.wav.coiMask    = true;          % за конусом впливу |W| -> NaN
+        FIG.wav.clipPct    = 1;             % межі colorbar-а |W| за перцентилями
+        FIG.skel.markerSize = 1;            % площа маркера scatter (pt^2); малий -> лінії не зливаються
+    
+        % -- мультифрактали (Fig6) --------------------------------------------
+        FIG.mfr.qRange = -5:0.2:5;      % діапазон/крок q (дрібний крок біля 0 -> суцільна арка f(h))
+        FIG.mfr.row1   = 'Dq';         % ряд 1: 'Dq' | 'tau' | 'hq'
+        FIG.mfr.line   = [0.20 0.35 0.75];   % колір кривих
+        FIG.mfr.lineW  = 1.3;          % pt
+        FIG.mfr.marker = 3;            % розмір маркерів на кривій (pt)
+    
+        %% 12 ─── ТАБЛИЦІ МОМЕНТІВ ─────────────────────────────────────────────
+        %   make_stats_table -> FigN\stats.<набір>.<variant>.txt (вирівняні колонки)
+        %   + .docx (у стилі журналу). ОКРЕМИЙ файл на кожен алгоритм зі списку
+        %   FIG.variants (тег у імені) — інший алгоритм не затирає попередній.
+        %   Набори: moments/acf/psd/skeleton/wavelet/multifractal/mueller.
+        %   Обсяг = FIG.build (секція 2).
+        FIG.stats.excessKurt = false;  % false: звичайний ексцес (норма 3); true: надлишковий (норма 0)
+        FIG.stats.docx       = true;   % будувати .docx (потребує MATLAB Report Generator)
 
 end

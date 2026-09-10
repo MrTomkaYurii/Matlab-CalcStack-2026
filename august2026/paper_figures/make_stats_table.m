@@ -10,8 +10,11 @@ function T = make_stats_table(FIG)
 %     stats.multifractal / stats.mueller  — Fig6 / Fig7
 %
 %   .txt — вирівняні колонки, блок на кожен рисунок (зручно читати);
-%   .docx — ті самі числа у стилі журналу. Файли — у теку СВОГО рисунка:
-%   FIG.out.root\<FigN>\stats.<набір>.txt/.docx
+%   .docx — ті самі числа у стилі журналу. ОКРЕМИЙ файл на КОЖЕН алгоритм
+%   (варіант) — тег алгоритму в імені файлу; кладуться у теку СВОГО рисунка:
+%   FIG.out.root\<FigN>\stats.<набір>.<variant>.txt/.docx
+%   (variant = XY | generalized | OX | OY | PERP | polarOX | polarOY)
+%   Так повторний прогін іншого алгоритму НЕ затирає таблиці попереднього.
 %
 %   ОБСЯГ = FIG.build (як у run_all_figures): рахуються таблиці ЛИШЕ для
 %   обраних рисунків ('Fig1' -> обидві пари; 'Fig2:f33f44' -> лише ця пара).
@@ -46,6 +49,9 @@ specs = { ...
 
 build = {};
 if isfield(FIG,'build') && ~isempty(FIG.build); build = FIG.build; end
+build = build(~strcmpi(build, 'stats'));   % 'stats' — службовий прапорець run_all_figures, не селектор рисунка
+FIG.build = build;                         % те саме звуження бачить collect_spec (фільтр .keys)
+% Порожній залишок (FIG.build = {'stats'} або {}) -> таблиці для УСІХ рисунків.
 
 for s = 1:numel(specs)
     if ~spec_wanted(build, specs{s})
@@ -57,13 +63,21 @@ for s = 1:numel(specs)
         T = collect_spec(FIG, specs{s});
     end
     if isempty(T); fprintf(2,'  [%s] нема даних — пропуск\n', specs{s}.file); continue; end
-    txtPath = write_txt(T, FIG, specs{s});
-    fprintf('  [ok] %s  (%d рядків)\n', txtPath, height(T));
-    if FIG.stats.docx
-        try
-            fprintf('  [ok] %s\n', build_docx(T, FIG, specs{s}));
-        catch ME
-            fprintf(2, '  [docx skip] %s : %s\n', specs{s}.file, ME.message);
+
+    % ОКРЕМИЙ набір файлів на кожен алгоритм (варіант): stats.<набір>.<tag>.txt/.docx.
+    % Так повторний прогін іншого алгоритму не затирає таблиці попереднього.
+    vtags = unique(T.variant, 'stable');
+    for vi = 1:numel(vtags)
+        vt = vtags{vi};
+        Tv = T(strcmp(T.variant, vt), :);
+        txtPath = write_txt(Tv, FIG, specs{s}, vt);
+        fprintf('  [ok] %s  (%d рядків)\n', txtPath, height(Tv));
+        if FIG.stats.docx
+            try
+                fprintf('  [ok] %s\n', build_docx(Tv, FIG, specs{s}, vt));
+            catch ME
+                fprintf(2, '  [docx skip] %s [%s] : %s\n', specs{s}.file, vt, ME.message);
+            end
         end
     end
 end
@@ -196,13 +210,13 @@ if isempty(i); tag = regexprep(lower(sName), '\s+', '-'); else; tag = FIG.sample
 end
 
 % ======================================================================
-function outPath = write_txt(T, FIG, sp)
+function outPath = write_txt(T, FIG, sp, vtag)
 % Гарно вирівняний .txt: шапка з поясненням -> блок на кожен рисунок
-% (variant x зразок x приклад), у блоці — таблиця з вирівняними колонками.
-% Кладеться у теку СВОГО рисунка: FIG.out.root\<sp.fig>\<sp.file>.txt
+% (зразок x приклад), у блоці — таблиця з вирівняними колонками. ОКРЕМИЙ файл
+% на алгоритм: FIG.out.root\<sp.fig>\<sp.file>.<vtag>.txt
 outDir = fullfile(FIG.out.root, sp.fig);
 if ~exist(outDir,'dir'); mkdir(outDir); end
-outPath = fullfile(outDir, [sp.file '.txt']);
+outPath = fullfile(outDir, sprintf('%s.%s.txt', sp.file, vtag));
 [head, cols, fmts] = table_columns(sp.metrics);
 
 fid = fopen(outPath, 'w', 'n', 'UTF-8');
@@ -210,7 +224,7 @@ oc  = onCleanup(@() fclose(fid));
 
 bar = repmat('=', 1, 78);
 fprintf(fid, '%s\n', bar);
-fprintf(fid, '  %s   (%s)\n', stats_title(sp.kind), sp.fig);
+fprintf(fid, '  %s   (%s · алгоритм %s)\n', stats_title(sp.kind), sp.fig, vtag);
 fprintf(fid, '%s\n', bar);
 for L = stats_legend(sp, FIG); fprintf(fid, '  %s\n', L{1}); end
 fprintf(fid, '  Один блок = один рисунок; рядок = один розподіл (фаз. вікно x елемент x |f|/arg).\n');
@@ -339,15 +353,16 @@ if isfield(m, kind); s = m.(kind); else; s = ['Статистичні момен
 end
 
 % ======================================================================
-function outPath = build_docx(T, FIG, sp)
+function outPath = build_docx(T, FIG, sp, vtag)
 import mlreportgen.dom.*
 outDir = fullfile(FIG.out.root, sp.fig);   % у теку свого рисунка
 if ~exist(outDir,'dir'); mkdir(outDir); end
-outPath = fullfile(outDir, [sp.file '.docx']);
-d = Document(fullfile(outDir, sp.file), 'docx');  open(d);
+stem = sprintf('%s.%s', sp.file, vtag);    % ОКРЕМИЙ файл на алгоритм
+outPath = fullfile(outDir, [stem '.docx']);
+d = Document(fullfile(outDir, stem), 'docx');  open(d);
 AR = {FontFamily('Arial')};
 
-h = append(d, Heading(1, sprintf('%s  (%s)', stats_title(sp.kind), sp.fig)));
+h = append(d, Heading(1, sprintf('%s  (%s · алгоритм %s)', stats_title(sp.kind), sp.fig, vtag)));
 h.Style = [AR, {FontSize('13pt')}];
 
 for L = stats_legend(sp, FIG)

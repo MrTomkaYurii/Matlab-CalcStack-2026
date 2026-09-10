@@ -47,26 +47,14 @@ tp_assert(all(ismember(lower(CFG.algorithms), knownAlgos)), ...
     'CFG.algorithms: лише {orthogonal, generalized, polar, XY} (зараз: {%s})', strjoin(CFG.algorithms, ', '));
 tp_assert(~any(strcmpi(CFG.algorithms,'polar')) || isfield(CFG,'polar'), ...
     'CFG.algorithms містить ''polar'', але секції CFG.polar немає');
-% 'XY' — ЗВЕДЕНА карта OX+OY: не рахує f_ik сама, а ЧИТАЄ orthogonal-результат
-% (orthogonal/OX/step_<d> + orthogonal/OY/step_<d>).
-if any(strcmpi(CFG.algorithms,'xy'))
-    if any(strcmpi(CFG.algorithms,'orthogonal'))
-        % рахуються разом цього прогону -> orthogonal мусить дати ОБИДВА напрями
-        orthoDirs = {'OX','OY'};
-        if isfield(CFG,'ortho') && isfield(CFG.ortho,'directions') && ~isempty(CFG.ortho.directions)
-            orthoDirs = CFG.ortho.directions;
-        end
-        tp_assert(all(ismember({'OX','OY'}, upper(orthoDirs))), ...
-            'CFG.algorithms містить ''orthogonal''+''XY'', тож CFG.ortho.directions мають включати ОБИДВА {''OX'',''OY''}');
-    else
-        % 'XY' сам по собі -> orthogonal має лишитись з попереднього прогону
-        % (той самий зразок / фазові вікна / CFG.ortho.steps). Якщо його немає,
-        % tp_algo_XY кине зрозумілу помилку на кожен крок.
-        fprintf(2, ['[tp_check_config] УВАГА: CFG.algorithms = {''XY''} без ''orthogonal''. ' ...
-                    '''XY'' збирається з уже збереженого orthogonal-результату — переконайся, що ' ...
-                    'orthogonal порахований для тих самих зразків / фазових вікон / CFG.ortho.steps ' ...
-                    '(інакше додай ''orthogonal'' у список).\n']);
-    end
+% 'XY' — ЗВЕДЕНА карта OX+OY. Бере OX/OY з orthogonal-результату (якщо він
+% на диску), інакше рахує в пам'яті. 'orthogonal' у списку НЕ обов'язковий;
+% бере лише CFG.ortho.steps / .posStep — тож секція CFG.ortho має бути.
+tp_assert(~any(strcmpi(CFG.algorithms,'xy')) || isfield(CFG,'ortho'), ...
+    'CFG.algorithms містить ''XY'', але секції CFG.ortho немає (XY бере CFG.ortho.steps)');
+if isfield(CFG,'XY') && isfield(CFG.XY,'normalize')
+    tp_assert(islogical(CFG.XY.normalize) && isscalar(CFG.XY.normalize), ...
+        'CFG.XY.normalize має бути true або false');
 end
 if isfield(CFG,'horsky') && isfield(CFG.horsky,'algorithms') && ~isempty(CFG.horsky.algorithms)
     tp_assert(iscell(CFG.horsky.algorithms) && ...
