@@ -29,7 +29,7 @@ function run_TwoPoint_VizFromResults(target, cfgOverride)
 here = fileparts(mfilename('fullpath'));
 addpath(fullfile(here,'config'), genpath(fullfile(here,'core')), ...
         fullfile(here,'io'),     fullfile(here,'viz'), fullfile(here,'simulation'), ...
-        fullfile(here,'analysis'));
+        fullfile(here,'analysis_ММ'));
 
 if nargin >= 2 && isstruct(cfgOverride)
     CFG = cfgOverride;

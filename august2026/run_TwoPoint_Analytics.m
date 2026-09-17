@@ -49,7 +49,7 @@ function run_TwoPoint_Analytics(cfgOverride, force)
 %       run_TwoPoint_Analytics(myCFG, true)    % власний CFG + примусовий перерахунок
 
 here = fileparts(mfilename('fullpath'));
-addpath(fullfile(here,'config'), genpath(fullfile(here,'core')), fullfile(here,'analysis'), fullfile(here,'viz'));
+addpath(fullfile(here,'config'), genpath(fullfile(here,'core')), fullfile(here,'analysis_ММ'), fullfile(here,'viz'));
 
 % ---- аргументи: (CFG?, force?) з дозволом run_TwoPoint_Analytics('force') ----
 if nargin < 2, force = false; end

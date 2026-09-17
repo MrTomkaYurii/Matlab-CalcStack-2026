@@ -3,7 +3,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 pathForRead  = 'C:\[TOMKA] - Modelling\ЕТАП №05 - реальні БТ і БР\Зразки'; % директива где хранятся образцы
 pathForSave  = 'C:\[TOMKA] - Modelling\ЕТАП №05 - реальні БТ і БР';        % директива для сохранения
-pathForCode  = 'C:\Users\Yurii\Documents\MATLAB'                           % директива c програмамми
+pathForCode  = fileparts(mfilename('fullpath'));                            % директива c програмами
+addpath(pathForCode);
+addpath(fullfile(fileparts(pathForCode), 'utils'));
 
 global data_sets; data_sets = struct();
 global Results; Results = struct();

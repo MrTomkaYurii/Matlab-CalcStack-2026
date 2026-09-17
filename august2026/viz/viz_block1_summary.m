@@ -19,9 +19,9 @@ for c = 1:numel(CFG.viz.colormaps)
 
     % ряд 1 — карти
     mapPanel(subplot(3,2,1), meta.x, meta.y, D.mod, cmap, meta, meta.modLabel, ...
-             sprintf('Module map  %s', meta.modLabel), S);
+             sprintf('Module map  %s', meta.modLabel), S, false);
     mapPanel(subplot(3,2,2), meta.x, meta.y, D.arg, cmap, meta, meta.argLabel, ...
-             sprintf('Argument map  %s', meta.argLabel), S);
+             sprintf('Argument map  %s', meta.argLabel), S, true);
 
     % ряд 2 — гістограми
     histPanel(subplot(3,2,3), D.mod, meta.modLabel, false, CFG.viz.histBins, [0.20 0.40 0.80], S);
@@ -45,11 +45,15 @@ end
 end
 
 % ------------------------------------------------------------------------
-function mapPanel(ax, x, y, Z, cmap, meta, cbLabel, ttl, S)
+function mapPanel(ax, x, y, Z, cmap, meta, cbLabel, ttl, S, isPhase)
 im = imagesc(ax, x, y, Z); set(im,'AlphaData',isfinite(Z));
 set(ax,'YDir','normal'); axis(ax,'image'); colormap(ax, cmap);
-lo = min(Z(:),[],'omitnan'); hi = max(Z(:),[],'omitnan');
-if isfinite(lo) && isfinite(hi) && lo<hi, caxis(ax,[lo hi]); end
+if isPhase
+    caxis(ax, [-pi pi]);
+else
+    lo = min(Z(:),[],'omitnan'); hi = max(Z(:),[],'omitnan');
+    if isfinite(lo) && isfinite(hi) && lo<hi, caxis(ax,[lo hi]); end
+end
 cb = colorbar(ax); cb.Label.String = cbLabel; cb.Color = S.ink;
 xlabel(ax, meta.xlabel,'FontSize',S.labelSize); ylabel(ax, meta.ylabel,'FontSize',S.labelSize);
 title(ax, ttl,'FontSize',S.subSize,'FontWeight','bold','Interpreter','tex');
@@ -60,6 +64,9 @@ end
 function histPanel(ax, Z, xlab, isPhase, nbins, faceColor, S)
 v = Z(isfinite(Z));
 histogram(ax, v, nbins, 'FaceColor',faceColor, 'EdgeColor',[0.2 0.2 0.2]);
+if isPhase
+    xlim(ax, [-pi pi]);
+end
 xlabel(ax, xlab,'FontSize',S.labelSize); ylabel(ax,'Count','FontSize',S.labelSize);
 S.apply(ax);
 [mu, sd, sk, ku] = tp_moments(v, isPhase);

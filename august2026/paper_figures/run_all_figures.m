@@ -36,6 +36,7 @@ addpath(here, fullfile(here,'common'), fullfile(here,'fig01'), fullfile(here,'fi
 if nargin < 1 || isempty(FIG); FIG = cfg_figures(); end
 if ~exist(FIG.out.root,'dir'); mkdir(FIG.out.root); end
 tp_paper_normalize('reset');   % свіжий кеш опорного масштабу f_11 на весь прогін
+acf_win('reset');              % свіжий кеш спільного вікна лагів АКФ (FigN)
 
 build = {'Fig1','Fig2','Fig3','Fig4','Fig5','Fig6','Fig7','stats'};   % за замовч. усе
 if isfield(FIG,'build') && ~isempty(FIG.build); build = FIG.build; end

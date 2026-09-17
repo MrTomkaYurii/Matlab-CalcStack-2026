@@ -11,7 +11,11 @@ function [acf, psd, lagx, lagy] = tp_acf_psd(Z, method)
 %   psd  : 2D PSD (fftshift)
 %   lagx, lagy : осі лагів для acf
 
-v = Z; mu = mean(v(isfinite(v))); v(~isfinite(v)) = mu; v = v - mu;
+v = Z;
+fin = v(isfinite(v));
+if isempty(fin); mu = 0; else; mu = mean(fin); end
+v(~isfinite(v)) = mu;
+v = v - mu;
 [M, N] = size(v);
 
 switch lower(method)

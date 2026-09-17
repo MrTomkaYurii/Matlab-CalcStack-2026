@@ -28,7 +28,7 @@ function run_TwoPoint_FillMissing(cfgOverride)
 here = fileparts(mfilename('fullpath'));
 addpath(fullfile(here,'config'), genpath(fullfile(here,'core')), ...
         fullfile(here,'io'),     fullfile(here,'viz'), fullfile(here,'simulation'), ...
-        fullfile(here,'analysis'));
+        fullfile(here,'analysis_ММ'));
 
 if nargin >= 1 && isstruct(cfgOverride)
     CFG = cfgOverride;
@@ -168,23 +168,41 @@ for p = 1:numel(uniquePairs)
         continue;
     end
 
+    % 'orthogonal' потрібен НЕМАСКОВАНИМ і для XY (сума OX+OY має братись з
+    % ПОВНОГО результату, а не з уже провіконеного диска — той самий
+    % аргумент, що й у run_TwoPoint_Pipeline.m). Тому, якщо для якогось k у
+    % плані є needOrtho АБО needXYsteps, orthogonal рахується РАЗ на k
+    % (needOrtho чи ні) і кешується в пам'яті для XY.
     for ii = idx
         it = plan(ii);
         if phaseOn
-            [IMGk, ~] = tp_phase_window(IMG, CFG, it.k);
             phaseFolder = tp_phase_folder_name(CFG, it.k);
             phaseOut = fullfile(sampleOut, phaseFolder);
             phaseDeg = round(U(it.k)/pi*180);
         else
-            IMGk = IMG; phaseOut = sampleOut; phaseDeg = NaN;
+            phaseOut = sampleOut; phaseDeg = NaN;
         end
         ctx = struct('sample', sampleName, 'example', example, 'phase_index', it.k, 'phase_deg', phaseDeg);
 
-        if it.needOrtho
+        % ---- orthogonal: рахується НЕМАСКОВАНИМ (повний IMG); фазове вікно
+        %      (per-element, за ВЛАСНИМ arg кожного f_ik) накладається ПІСЛЯ,
+        %      tp_phase_window_element.m — той самий підхід, що й в основному
+        %      пайплайні. Рахуємо його тут і тоді, коли треба лише для XY. ----
+        Rortho = [];
+        if it.needOrtho || ~isempty(it.needXYsteps)
             try
                 t = tic;
-                R = tp_algo_orthogonal(IMGk, CFG, sampleOut);
-                fprintf('    [orthogonal] %s / k=%d : computed in %.1f s\n', sampleLabel, it.k, toc(t));
+                Rortho = tp_algo_orthogonal(IMG, CFG, sampleOut);
+                fprintf('    [orthogonal] %s / k=%d : computed in %.1f s (повний кадр)\n', sampleLabel, it.k, toc(t));
+            catch ME
+                fprintf(2, '    [fail] %s / orthogonal k=%d (розрахунок): %s\n', sampleLabel, it.k, ME.message);
+            end
+        end
+
+        if it.needOrtho && ~isempty(Rortho)
+            try
+                R = Rortho;
+                if phaseOn, R = tp_phase_window_result(R, CFG, it.k); end
                 for di = 1:numel(R.dirs)
                     dirName = R.dirs{di};
                     sep = R.sep.(dirName);
@@ -198,15 +216,16 @@ for p = 1:numel(uniquePairs)
                 end
                 tp_visualize(R, CFG);
             catch ME
-                fprintf(2, '    [fail] %s / orthogonal k=%d: %s\n', sampleLabel, it.k, ME.message);
+                fprintf(2, '    [fail] %s / orthogonal k=%d (вікно/збереження): %s\n', sampleLabel, it.k, ME.message);
             end
         end
 
         if it.needPolar
             try
                 t = tic;
-                R = tp_algo_polar(IMGk, CFG, sampleOut);
-                fprintf('    [polar] %s / k=%d : computed in %.1f s\n', sampleLabel, it.k, toc(t));
+                R = tp_algo_polar(IMG, CFG, sampleOut);
+                fprintf('    [polar] %s / k=%d : computed in %.1f s (повний кадр)\n', sampleLabel, it.k, toc(t));
+                if phaseOn, R = tp_phase_window_result(R, CFG, it.k); end
                 for di = 1:numel(R.dirs)
                     dirName = R.dirs{di};
                     sep = R.sep.(dirName);
@@ -227,7 +246,8 @@ for p = 1:numel(uniquePairs)
         for si = 1:numel(it.needXYsteps)
             step = it.needXYsteps(si);
             try
-                R = tp_algo_XY(IMGk, CFG, phaseOut, step);   % OX+OY з диску або з IMGk
+                R = tp_algo_XY(IMG, CFG, phaseOut, step, Rortho);   % Rortho (немаскований, у пам'яті) пріоритетно
+                if phaseOn, R = tp_phase_window_result(R, CFG, it.k); end
                 outDir = fullfile(CFG.paths.saveRoot, phaseOut, 'XY', sprintf('step_%d', step));
                 if ~exist(outDir,'dir'); mkdir(outDir); end
                 save(fullfile(outDir,'result.mat'), 'R', '-v7.3');
@@ -244,8 +264,9 @@ for p = 1:numel(uniquePairs)
             step = it.needGenSteps(si);
             try
                 t = tic;
-                R = tp_algo_generalized(IMGk, CFG, sampleOut, step);
-                fprintf('    [generalized step_%d] %s / k=%d : computed in %.1f s\n', step, sampleLabel, it.k, toc(t));
+                R = tp_algo_generalized(IMG, CFG, sampleOut, step);
+                fprintf('    [generalized step_%d] %s / k=%d : computed in %.1f s (повний кадр)\n', step, sampleLabel, it.k, toc(t));
+                if phaseOn, R = tp_phase_window_result(R, CFG, it.k); end
                 outDir = fullfile(CFG.paths.saveRoot, phaseOut, 'generalized', sprintf('step_%d', step));
                 if ~exist(outDir,'dir'); mkdir(outDir); end
                 save(fullfile(outDir,'result.mat'), 'R', '-v7.3');

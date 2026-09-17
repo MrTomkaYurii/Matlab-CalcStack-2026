@@ -14,12 +14,12 @@ for c = 1:numel(CFG.viz.colormaps)
     % (1) карта модуля
     ax = subplot(2,2,1);
     mapPanel(ax, meta.x, meta.y, D.mod, cmap, meta, meta.modLabel, ...
-             sprintf('Module  %s', meta.modLabel));
+             sprintf('Module  %s', meta.modLabel), false);
 
     % (2) карта аргументу
     ax = subplot(2,2,2);
     mapPanel(ax, meta.x, meta.y, D.arg, cmap, meta, meta.argLabel, ...
-             sprintf('Argument  %s', meta.argLabel));
+             sprintf('Argument  %s', meta.argLabel), true);
 
     % (3) гістограма модуля
     ax = subplot(2,2,3);
@@ -39,12 +39,16 @@ end
 end
 
 % ------------------------------------------------------------------------
-function mapPanel(ax, x, y, Z, cmap, meta, cbLabel, ttl)
+function mapPanel(ax, x, y, Z, cmap, meta, cbLabel, ttl, isPhase)
 im = imagesc(ax, x, y, Z); set(im,'AlphaData',isfinite(Z));
 set(ax,'YDir','normal'); axis(ax,'image');
 colormap(ax, cmap);
-lo = min(Z(:),[],'omitnan'); hi = max(Z(:),[],'omitnan');
-if isfinite(lo) && isfinite(hi) && lo<hi, caxis(ax,[lo hi]); end
+if isPhase
+    caxis(ax, [-pi pi]);
+else
+    lo = min(Z(:),[],'omitnan'); hi = max(Z(:),[],'omitnan');
+    if isfinite(lo) && isfinite(hi) && lo<hi, caxis(ax,[lo hi]); end
+end
 cb = colorbar(ax); cb.Label.String = cbLabel; cb.Color = [0.12 0.12 0.12];
 xlabel(ax, meta.xlabel,'FontSize',11); ylabel(ax, meta.ylabel,'FontSize',11);
 title(ax, ttl, 'FontSize',12,'FontWeight','bold','Interpreter','tex');
@@ -54,6 +58,9 @@ end
 function histPanel(ax, Z, xlab, isPhase, nbins, faceColor, S)
 v = Z(isfinite(Z));
 histogram(ax, v, nbins, 'FaceColor',faceColor, 'EdgeColor',[0.2 0.2 0.2]);
+if isPhase
+    xlim(ax, [-pi pi]);
+end
 xlabel(ax, xlab,'FontSize',S.labelSize); ylabel(ax,'Count','FontSize',S.labelSize);
 S.apply(ax);
 % 4 статистичні моменти (для фази — циклічне середнє); tp_moments — те саме

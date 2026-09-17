@@ -48,6 +48,9 @@ for si = 1:numel(C.samples)
             % АКФ/PSD/переріз — ОДИН раз (не залежить від кольору)
             winData = paper_prep(winData, elems, kind, FIG);
 
+            % спільне піввікно лагів АКФ для групи (пара × алгоритм) — мемоізовано
+            if strcmp(kind,'acf'); FIG.acf.win = acf_win(FIG, cfgKey, v); end
+
             for mi = 1:numel(FIG.color.modes)
                 mode = FIG.color.modes{mi};
                 Fm = FIG;

@@ -33,7 +33,9 @@ for w = 1:numel(winData)
             P = struct('img',[], 'x',[], 'y',[], 'axX','', 'axY','', 'yLog',false, ...
                        'skB',[], 'skA',[], 'skH',[], 'mf',[], ...
                        'isMod',strcmp(comp,'mod'), 'histSrc',[], ...
-                       'cutLag',[], 'cutCurve',[], 'cutXlab','', 'Lcorr',NaN);
+                       'cutLag',[], 'cutCurve',[], 'cutXlab','', 'Lcorr',NaN, ...
+                       'loLag',NaN, 'hiLag',NaN, ...
+                       'wcutB',[], 'wcutLo',[], 'wcutHi',[], 'wcutALo',NaN, 'wcutAHi',NaN);
 
             switch kind
                 case 'raw'
@@ -44,20 +46,27 @@ for w = 1:numel(winData)
                     P.histSrc = M(isfinite(M));
 
                 case 'acf'
+                    % ПОВНА 2D-АКФ + повний 1D-переріз + півширина; вікно лагів
+                    % (спільне на весь FigN) ріже render_grid_4x4 / make_stats_table.
                     [acf, ~, lx, ly] = tp_acf_psd(M, FIG.acf.method);   % acf у [0,1], розмір (2M-1)
-                    fr = FIG.acf.cropFrac;
-                    kx = abs(lx) <= fr*max(lx);   ky = abs(ly) <= fr*max(ly);
-                    P.img = acf(ky, kx);   P.x = lx(kx);   P.y = ly(ky);
+                    P.img = acf;   P.x = lx;   P.y = ly;
                     P.axX = sprintf('\\Deltax (%s)', FIG.axis.unit);
                     P.axY = sprintf('\\Deltay (%s)', FIG.axis.unit);
-                    [P.cutLag, P.cutCurve, P.cutXlab] = acf_cut(P.img, P.x, P.y, FIG.acf.cut, FIG.axis.unit);
-                    P.Lcorr = tp_acf_hwhm(P.cutLag, P.cutCurve);
+                    [P.cutLag, P.cutCurve, P.cutXlab] = acf_cut(acf, lx, ly, FIG.acf.cut, FIG.axis.unit);
+                    [P.Lcorr, P.loLag, P.hiLag] = tp_acf_hwhm(P.cutLag, P.cutCurve);
 
                 case 'psd'
                     [~, psd] = tp_acf_psd(M, FIG.acf.method);           % psd fftshift, розмір MxN
                     [My, Nx] = size(psd);
                     fx = ((0:Nx-1) - floor(Nx/2)) / Nx;                 % нормована частота, [-0.5, 0.5)
                     fy = ((0:My-1) - floor(My/2)) / My;
+                    % DC (k=0) виключаємо: у tp_acf_psd.m сигнал центрують
+                    % (віднімають середнє) ПЕРЕД FFT, тому psd у самій точці
+                    % k=0 ~ машинний нуль -> log10 дає ~-300 і одним пікселем
+                    % ламає колірну шкалу й гістограму для всього спектра
+                    % (перевірено: без цього карта майже одноколірна).
+                    [~, ixDC] = min(abs(fx));  [~, iyDC] = min(abs(fy));
+                    psd(iyDC, ixDC) = NaN;
                     Z = psd;
                     if FIG.psd.log,  Z = log10(psd + realmin);  end
                     fr = FIG.psd.cropFrac;
@@ -72,6 +81,19 @@ for w = 1:numel(winData)
                     P.axX = sprintf('b (%s)', FIG.axis.unit);
                     P.axY = sprintf('scale a (%s)', FIG.axis.unit);
                     P.histSrc = A(isfinite(A));
+
+                    % два перерізи |W(a_fix,b)| при ФІКСОВАНОМУ масштабі —
+                    % низький (FIG.wav.cutScales(1)) і високий (2). 'a' —
+                    % дискретна сітка CWT-філтербанку, беремо найближчий рядок.
+                    if isfield(FIG.wav,'cutScales') && numel(FIG.wav.cutScales) == 2
+                        [~, iLo] = min(abs(a - FIG.wav.cutScales(1)));
+                        [~, iHi] = min(abs(a - FIG.wav.cutScales(2)));
+                        P.wcutB    = b;
+                        P.wcutLo   = A(iLo, :);
+                        P.wcutHi   = A(iHi, :);
+                        P.wcutALo  = a(iLo);
+                        P.wcutAHi  = a(iHi);
+                    end
 
                 case 'skel'
                     [A, b, a] = wav_cwt(M, FIG);
@@ -122,28 +144,48 @@ switch lower(FIG.wav.profile)
     case 'mean_row',   sig = mean(M, 1, 'omitnan');
     otherwise,         sig = M(round(size(M,1)/2), :);
 end
-sig = fillmissing(fillmissing(sig(:).', 'linear'), 'nearest');
+
+% Якщо центральний профіль містить замало валідних точок (випав з фазової маски),
+% шукаємо рядок з найбільшою кількістю валідних пікселів
+if sum(isfinite(sig)) < 4
+    valPerRow = sum(isfinite(M), 2);
+    [maxN, bestRow] = max(valPerRow);
+    if maxN >= 4
+        sig = M(bestRow, :);
+    end
+end
 
 fb = cwtfilterbank('SignalLength',numel(sig), 'Wavelet',FIG.wav.wavelet, ...
                    'VoicesPerOctave',FIG.wav.voices);
-[wtc, freq, coi] = wt(fb, sig);
 a0 = scales(fb);            % масштаби, той самий порядок, що й freq / рядки wtc
+sr = FIG.wav.scaleRange;
+keep = a0 >= sr(1) & a0 <= sr(2);
+if ~any(keep); keep = true(size(a0)); end
+a = a0(keep);
+a = reshape(a, [], 1);
+b = 1:numel(sig);
+
+% Якщо у всій карті недостатньо точок (вироджена / повністю замаскована карта)
+if sum(isfinite(sig)) < 4
+    A = nan(numel(a), numel(b));
+    return;
+end
+
+sig = fillmissing(fillmissing(sig(:).', 'linear'), 'nearest');
+sig(~isfinite(sig)) = 0;   % 100% гарантія скінченності для wt()
+
+[wtc, freq, coi] = wt(fb, sig);
 A0 = abs(wtc);
 coiA = interp1(freq, a0, coi, 'linear', 'extrap');
 coiA = min(max(reshape(coiA, 1, []), min(a0)), max(a0));
 
-sr = FIG.wav.scaleRange;
-keep = a0 >= sr(1) & a0 <= sr(2);
-if ~any(keep); keep = true(size(a0)); end
-a = a0(keep);   A = A0(keep, :);
-a = reshape(a, [], 1);
+A = A0(keep, :);
 
 if FIG.wav.coiMask
     for r = 1:numel(a)
         A(r, a(r) > coiA) = NaN;
     end
 end
-b = 1:numel(sig);
 end
 
 % ======================================================================

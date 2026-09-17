@@ -26,9 +26,10 @@ switch lower(CFG.wavelet.profile)
     otherwise,         sig = Z(round(size(Z,1)/2), :);
 end
 sig = fillmissing(sig,'linear'); sig = fillmissing(sig,'nearest');
-if all(~isfinite(sig)) || std(sig(isfinite(sig)))==0
+if sum(isfinite(sig)) < 4 || std(sig(isfinite(sig))) == 0
     return;
 end
+sig(~isfinite(sig)) = 0;
 
 fb = cwtfilterbank('SignalLength',numel(sig),'Wavelet',CFG.wavelet.name, ...
                    'VoicesPerOctave',CFG.wavelet.voicesPerOctave);

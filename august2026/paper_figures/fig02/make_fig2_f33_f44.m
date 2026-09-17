@@ -18,6 +18,7 @@ here = fileparts(mfilename('fullpath'));
 root = fileparts(here);
 addpath(root, fullfile(root,'common'), here);
 if nargin < 1 || isempty(FIG); FIG = cfg_figures(); end
+acf_win('reset');
 
 fprintf('=== Fig2, варіант f33/f44 (АКФ) ===\n');
 n = make_grid_pair(FIG, 'fig02_f33f44', 'Fig2', 'acf');

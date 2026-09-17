@@ -4,7 +4,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 pathForRead  = 'C:\CALCULATION\ZRAZKU';                                    % директива где хранятся образцы
 pathForSave  = 'C:\CALCULATION';                                           % директива для сохранения
-pathForCode  = 'C:\Users\Yurii\Documents\MATLAB'                           % директива c програмамми
+pathForCode  = fileparts(mfilename('fullpath'));
+addpath(pathForCode);
+addpath(fullfile(fileparts(pathForCode), 'utils'));                           % директива c програмамми
 
 global data_sets; data_sets = struct();
 

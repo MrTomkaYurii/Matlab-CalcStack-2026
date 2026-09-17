@@ -1,5 +1,7 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% -------- Вхідні параметри
+here = fileparts(mfilename('fullpath'));
+addpath(here);
+addpath(fullfile(fileparts(here), 'utils'));
+
 colormap_value = 'jet';                  % 🔧 Мапа кольорів
 
 m = 400;                                % 🔧 кількість рядків

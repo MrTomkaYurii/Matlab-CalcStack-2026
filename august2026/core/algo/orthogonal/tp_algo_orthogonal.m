@@ -75,5 +75,5 @@ R.dirs{end+1} = dir;
 end
 
 function s = pack(z)
-s = struct('cplx', z, 'mod', abs(z), 'arg', angle(z));
+s = struct('cplx', z, 'mod', abs(z), 'arg', atan2(imag(z), real(z)));
 end

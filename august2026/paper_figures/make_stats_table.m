@@ -30,6 +30,7 @@ here = fileparts(mfilename('fullpath'));   % ...\paper_figures
 addpath(here, fullfile(here,'common'));
 if nargin < 1 || isempty(FIG); FIG = cfg_figures(); end
 if ~exist(FIG.out.root,'dir'); mkdir(FIG.out.root); end
+acf_win('reset');
 
 specs = { ...
   struct('file','stats.moments','kind','raw','fig','Fig1', ...
@@ -41,6 +42,8 @@ specs = { ...
   struct('file','stats.skeleton','kind','skel','fig','Fig4', ...
          'keys',{{'fig04_f33f44','fig04_f23f24'}}, 'metrics',{{'Z1','Z2','Z3','Z4'}}), ...
   struct('file','stats.wavelet','kind','wav','fig','Fig5', ...
+         'keys',{{'fig05_f33f44','fig05_f23f24'}}, 'metrics',{{'Z1','Z2','Z3','Z4'}}), ...
+  struct('file','stats.wavelet_cuts','kind','wavcut','fig','Fig5', ...
          'keys',{{'fig05_f33f44','fig05_f23f24'}}, 'metrics',{{'Z1','Z2','Z3','Z4'}}), ...
   struct('file','stats.multifractal','kind','mfr','fig','Fig6', ...
          'keys',{{'fig06_f33f44','fig06_f23f24'}}, 'metrics',{{'dH','dHl','dHr','asym','D0','D1','D2'}}), ...
@@ -111,6 +114,9 @@ for p = 1:numel(keys)
             ex = C.examples{xi};
             for vi = 1:numel(C.variants)
                 v = C.variants{vi};
+                if strcmp(sp.kind,'acf')
+                    FIG.acf.win = acf_win(FIG, keys{p}, v);   % те саме вікно, що на рисунку
+                end
                 base = sprintf('%s.%s-%s.%s.%s.%s%s', sp.fig, elems{1}, elems{2}, v.tag, sTag, ex_prefix(FIG), ex);
 
                 winData = cell(1, numel(FIG.phase));  ok = true;
@@ -123,22 +129,49 @@ for p = 1:numel(keys)
                     end
                 end
                 if ~ok; continue; end
-                winData = paper_prep(winData, elems, sp.kind, FIG);
+                % 'wavcut' — той самий розрахунок, що 'wav' (paper_prep кладе
+                % P.wcutLo/P.wcutHi під час kind='wav'); окремий spec.kind лише
+                % для вибору РЯДКІВ нижче (перерізи, а не ціла карта |W|).
+                prepKind = tern(strcmp(sp.kind,'wavcut'), 'wav', sp.kind);
+                winData = paper_prep(winData, elems, prepKind, FIG);
 
                 for w = 1:numel(FIG.phase)
                     for e = 1:numel(elems)
                         for comp = {'mod','arg'}
                             P = winData{w}.prep.(elems{e}).(comp{1});
+                            compLbl = tern(strcmp(comp{1},'mod'),'|f|','arg');
                             if strcmp(sp.kind,'mfr')
                                 z = nan(1,4);  N = NaN;  Lc = NaN;  mf = mfr_row(P.mf);
+                                rows(end+1,:) = { base, sp.fig, [elems{1} '-' elems{2}], v.tag, sName, ex, ...
+                                    FIG.phase(w).label, elems{e}, compLbl, ...
+                                    N, z(1), z(2), z(3), z(4), Lc, mf(1),mf(2),mf(3),mf(4),mf(5),mf(6),mf(7) }; %#ok<AGROW>
+                            elseif strcmp(sp.kind,'wavcut')
+                                % ДВА рядки — переріз при низькому і при
+                                % високому фіксованому масштабі a.
+                                cutFields = {'wcutLo','wcutHi'};
+                                cutA = [P.wcutALo, P.wcutAHi];
+                                for ci = 1:2
+                                    src = P.(cutFields{ci});  src = src(isfinite(src));
+                                    z = stats_moments(src, FIG.stats.excessKurt);
+                                    mf = nan(1,7);
+                                    elemLbl = sprintf('%s (a=%.1f)', elems{e}, cutA(ci));   % шкала-переріз -> у назву елемента, component лишається чистим '|f|'/'arg'
+                                    rows(end+1,:) = { base, sp.fig, [elems{1} '-' elems{2}], v.tag, sName, ex, ...
+                                        FIG.phase(w).label, elemLbl, compLbl, ...
+                                        numel(src), z(1), z(2), z(3), z(4), NaN, mf(1),mf(2),mf(3),mf(4),mf(5),mf(6),mf(7) }; %#ok<AGROW>
+                                end
                             else
-                                if strcmp(sp.kind,'acf'); src = P.img(isfinite(P.img)); else; src = P.histSrc; end
+                                if strcmp(sp.kind,'acf')
+                                    kx = abs(P.x) <= FIG.acf.win;  ky = abs(P.y) <= FIG.acf.win;
+                                    sub = P.img(ky, kx);  src = sub(isfinite(sub));   % те саме вікно, що на рисунку
+                                else
+                                    src = P.histSrc;
+                                end
                                 z = stats_moments(src, FIG.stats.excessKurt);
                                 N = numel(src);  Lc = P.Lcorr;  mf = nan(1,7);
+                                rows(end+1,:) = { base, sp.fig, [elems{1} '-' elems{2}], v.tag, sName, ex, ...
+                                    FIG.phase(w).label, elems{e}, compLbl, ...
+                                    N, z(1), z(2), z(3), z(4), Lc, mf(1),mf(2),mf(3),mf(4),mf(5),mf(6),mf(7) }; %#ok<AGROW>
                             end
-                            rows(end+1,:) = { base, sp.fig, [elems{1} '-' elems{2}], v.tag, sName, ex, ...
-                                FIG.phase(w).label, elems{e}, tern(strcmp(comp{1},'mod'),'|f|','arg'), ...
-                                N, z(1), z(2), z(3), z(4), Lc, mf(1),mf(2),mf(3),mf(4),mf(5),mf(6),mf(7) }; %#ok<AGROW>
                         end
                     end
                 end
@@ -347,6 +380,7 @@ m = struct( ...
   'psd',    'Моменти спектра потужності Z1–Z4 значень log10(PSD)', ...
   'skel',   'Моменти WTMM-скелетону Z1–Z4 амплітуд максимумів F(h)', ...
   'wav',    'Вейвлет-моменти Z1–Z4 амплітуд |W(a,b)|', ...
+  'wavcut', 'Вейвлет-моменти Z1–Z4 перерізів |W(a_fix,b)| при фіксованих масштабах a', ...
   'mfr',    'Мультифрактальні дескриптори: ширина спектра Δh (ліво/право), асиметрія, D0/D1/D2', ...
   'mueller','Статистичні моменти Z1–Z4 усіх 16 елементів матриці Мюллера f_ik (|f| / arg)');
 if isfield(m, kind); s = m.(kind); else; s = ['Статистичні моменти (' kind ')']; end

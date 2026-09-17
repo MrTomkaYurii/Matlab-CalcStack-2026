@@ -15,6 +15,29 @@ vArg = D.arg(isfinite(D.arg));
 [muM,sdM,skM,kuM,nM] = tp_moments(vMod, false);
 [muA,sdA,skA,kuA,nA] = tp_moments(vArg, true);
 
+% QC-поріг на самі МОМЕНТИ (не лише на діагностичну картинку tp_visualize):
+% замалі/задірявлені вибірки дають статистично ненадійний 3-й/4-й момент
+% (асиметрію/ексцес) — на вузьких фазових вікнах (phase_07/08) може лишитись
+% лічені пікселі. Той самий maxNaNfrac, що й у tp_validate.m (частка NaN
+% від ПОВНОГО кадру), + жорсткий абсолютний мінімум CFG.qc.minValidPixels
+% (типово 1000) — блокує обчислення, а не лише показ. N (nM/nA) лишається
+% справжнім, щоб було видно ЧОМУ рядок NaN. Fallback-значення нижче —
+% ЛИШЕ якщо CFG.qc не задано (не мало б траплятись) — синхронізовані з
+% "бойовими" значеннями cfg_TwoPoint.m, щоб не розійтись мовчки.
+maxNaNfrac = 0.95;
+if isfield(CFG,'qc') && isfield(CFG.qc,'maxNaNfrac'); maxNaNfrac = CFG.qc.maxNaNfrac; end
+minValidPixels = 1000;
+if isfield(CFG,'qc') && isfield(CFG.qc,'minValidPixels'); minValidPixels = CFG.qc.minValidPixels; end
+
+nanFracMod = 1 - numel(vMod)/numel(D.mod);
+if nM < minValidPixels || nanFracMod > maxNaNfrac
+    muM = NaN; sdM = NaN; skM = NaN; kuM = NaN;
+end
+nanFracArg = 1 - numel(vArg)/numel(D.arg);
+if nA < minValidPixels || nanFracArg > maxNaNfrac
+    muA = NaN; sdA = NaN; skA = NaN; kuA = NaN;
+end
+
 [acfMod, ~, lagxM, lagyM] = tp_acf_psd(D.mod, CFG.acf.method);
 [acfArg, ~, lagxA, lagyA] = tp_acf_psd(D.arg, CFG.acf.method);
 hwxM = tp_acf_hwhm(lagxM, acfMod(round(size(acfMod,1)/2), :));

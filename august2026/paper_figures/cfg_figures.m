@@ -43,9 +43,8 @@ FIG.out.pngDPI  = 300;   % PNG — прев'ю / вставити у Word чи �
 %     FIG.build = {'Fig1','stats'}     -> таблиці лише Fig1
 %   run_all_figures при цьому пропустить рендер і зробить лише make_stats_table;
 %   те саме напряму: make_stats_table(cfg_figures())
-%   Поодинокі рисунки й далі запускаються напряму: make_fig3_f23_f24(cfg_figures())
-FIG.build = {'stats'};   % ЗАРАЗ: лише таблиці моментів для всіх Fig1..Fig7 (рисунки не чіпаємо)
-% FIG.build = {'Fig1','Fig2','Fig3','Fig4','Fig5','Fig6','Fig7','stats'};   % повний прогін (рисунки + таблиці)
+%   Поодинокі рисунки й далі запускаються напряму: make_fig3_f23_f24(cfg_figures())%
+ FIG.build = {'Fig3','Fig4','Fig5','Fig6','Fig7'};   % повний прогін (рисунки + таблиці)
 
 %% 3 ─── ДЖЕРЕЛО ДАНИХ ────────────────────────────────────────────────────
 FIG.data.saveRoot = 'C:\August 2026-Results\Розрахунки - Двот. елем. ММ';
@@ -120,7 +119,7 @@ S = @(el, tex) struct('elems',{el}, 'elemTex',{tex}, ...
 
 FIG.fig01_f33f44 = S({'f33','f44'}, {'f_{33}','f_{44}'});   % Fig1 сирі карти |f|/arg
 FIG.fig01_f23f24 = S({'f23','f24'}, {'f_{23}','f_{24}'});
-FIG.fig02_f33f44 = S({'f33','f44'}, {'f_{33}','f_{44}'});   % Fig2 2D-АКФ + 3D-поверхня
+FIG.fig02_f33f44 = S({'f33','f44'}, {'f_{33}','f_{44}'});   % Fig2 2D-АКФ + 1D-перерізи з HWHM
 FIG.fig02_f23f24 = S({'f23','f24'}, {'f_{23}','f_{24}'});
 FIG.fig03_f33f44 = S({'f33','f44'}, {'f_{33}','f_{44}'});   % Fig3 2D-PSD (log10) + гістограми
 FIG.fig03_f23f24 = S({'f23','f24'}, {'f_{23}','f_{24}'});
@@ -179,7 +178,7 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
     FIG.geom.cbarStripH  = 1.8;  % кольорова смужка горизонтального colorbar-а (над картою)
     FIG.geom.cbarTickH   = 6;    % цифри під смужкою colorbar-а
     FIG.geom.titleH      = 6;    % заголовок стовпця (|f_a|, arg(f_a))
-    FIG.geom.histH       = 23;   % висота ряду гістограм
+    FIG.geom.histH       = 32;   % висота ряду гістограм (збільшено під повернуті на 90° тіки Y)
     FIG.geom.surf3dH     = 34;   % висота ряду 3D-поверхонь (Fig2, ряди 2,4)
     %   Зона ПІД панеллю = axisLabelH + letterGap + <висота літери> + letterGap.
     %   Відступ НАД літерою (від підпису осі) і ПІД нею (до наступної панелі) —
@@ -204,7 +203,8 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
     FIG.color.maps.gray  = struct('mod','gray', 'arg','gray');   % ЧБ (друк / colour-safe)
     %   У 'gray' аргумент — лінійний -pi(чорний)..+pi(білий); розрив на ±pi неминучий.
     FIG.color.argClim    = [-pi pi];   % фіксовані межі colorbar-а аргументу
-    FIG.color.modClipPct = 0;          % 0 = сирі min/max; >0 -> [prctile(p) .. prctile(100-p)]
+    FIG.color.modClipPct = 2.5;        % відсікає довгий хвіст рідкісних викидів (верхні 2.5%), фокусуючи шкалу на значущому діапазоні (OX до ~3)
+    FIG.color.modMax     = [];         % опційно: жорстка верхня межа модуля (напр. 3.0), якщо задана
     FIG.color.nan        = [1 1 1];    % колір NaN-пікселів (край без пари / поза вікном)
     
     %% 9 ─── ОСІ КАРТ + СІТКА ────────────────────────────────────────────────
@@ -223,24 +223,33 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
     FIG.hist.fill  = [0.55 0.55 0.55];
     FIG.hist.edge  = [0 0 0];
     FIG.hist.edgeW = 0.3;           % pt
+    FIG.hist.perWindowMod = false;  % false: спільний інтервал OY для модулів усієї фігури; true: окремий на фазове вікно
 
         %% 11 ─── АНАЛІТИКА ─────────────────────────────────────────────────────
         %   Усе рахується "на льоту" з тих самих сирих карт (core\tp_acf_psd.m,
         %   core\tp_multifractal.m), від СИРИХ mod/arg.
     
         % -- АКФ (Fig2) -----------------------------------------------------------
+        %   Ряд карт: 2D-АКФ, ЗУМ у центральний максимум (±zoomK·L) -> видно спад
+        %   і контур півширини 0.5. Ряд під ними: 1D-переріз АКФ через центр із
+        %   позначеною півшириною L (контур 0.5 + вертикальні пунктири HWHM).
         FIG.acf.method   = 'fast';      % 'fast' (Wiener-Khinchin) | 'direct' (xcorr2)
-        FIG.acf.cropFrac = 0.5;         % показувати центральні ±(cropFrac*макс. лаг) 2D-АКФ
-        FIG.acf.hwLevel  = 0.5;         % рівень контуру напівширини на 2D-АКФ (ряди карт)
-        FIG.acf.hwColor  = [0 0 0];
+        FIG.acf.cut      = 'x';         % напрям 1D-перерізу: 'x' | 'y' | 'radial'
+        %   Вікно лагів — ОДНЕ на групу (пара елементів × алгоритм): усі
+        %   зразки/приклади/вікна цієї трійки на однаковій сітці лагів.
+        %   w = clamp(winK·Lref, winMin, winMax), Lref — найбільша ФІЗИЧНА
+        %   півширина (виродж. майже-сталі карти виключено). Між алгоритмами
+        %   вікно різне (XY ~кілька px, generalized ~десятки). common\acf_win.m
+        FIG.acf.winK     = 3;           % вікно = winK · найбільша півширина групи
+        FIG.acf.winMin   = 20;          % px — мінімум
+        FIG.acf.winMax   = 200;         % px — максимум
+        FIG.acf.winDegen = 0.20;        % L > winDegen·(розмір карти) -> вироджена панель, не рахується
+        FIG.acf.hwLevel  = 0.5;         % рівень півширини (контур на 2D-АКФ + лінія на перерізі)
+        FIG.acf.hwColor  = [0 0 0];     % колір контуру 0.5 на 2D-карті
         FIG.acf.hwW      = 1.3;         % pt
-        FIG.acf.surf3dN    = 90;        % цільова сітка 3D-поверхні (даунсемпл важкої АКФ)
-        FIG.acf.surf3dView = [-40 40];  % кут огляду [az el]
-        FIG.acf.surf3dEdge = [];        % [] -> чиста кольорова поверхня; [r g b] -> тонка сітка
-        FIG.acf.cut      = 'x';         % напрям 1D-перерізу для ЧИСЛА довжини кореляції: 'x'|'y'|'radial'
     
         % -- PSD (Fig3) -----------------------------------------------------------
-        FIG.psd.cropFrac = 0.5;         % центральні ±(cropFrac*0.5) нормованої частоти
+        FIG.psd.cropFrac = 0.6;         % центральні ±(cropFrac*0.5) нормованої частоти -> ±0.30
         FIG.psd.log      = true;        % показувати log10(PSD)
         FIG.psd.clipPct  = 1;           % межі colorbar-а за перцентилями (0 = сирі min/max)
     
@@ -248,9 +257,10 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
         FIG.wav.profile    = 'center_row';  % 'center_row' | 'center_col' | 'mean_row'
         FIG.wav.wavelet    = 'amor';        % аналітичний вейвлет Морле
         FIG.wav.voices     = 12;            % голосів на октаву
-        FIG.wav.scaleRange = [1 120];       % масштаби a у цьому діапазоні (px)
-        FIG.wav.yscale     = 'log';         % вісь масштабу a: 'log' | 'linear'
-        FIG.wav.coiMask    = true;          % за конусом впливу |W| -> NaN
+        FIG.wav.scaleRange = [1 40];        % масштаби a у цьому діапазоні (px) — Lcorr тканини ~6-11px (АКФ), 120 було задалеко за реальною структурою
+        FIG.wav.yscale     = 'linear';       % вісь масштабу a: 'log' | 'linear' — лінійна, звичайні числа замість степенів 10
+        FIG.wav.coiMask    = false;         % за конусом впливу |W| -> NaN
+        FIG.wav.cutScales  = [5 30];        % низький / високий масштаб для перерізів |W(a_fix,b)| (низ Fig5)
         FIG.wav.clipPct    = 1;             % межі colorbar-а |W| за перцентилями
         FIG.skel.markerSize = 1;            % площа маркера scatter (pt^2); малий -> лінії не зливаються
     

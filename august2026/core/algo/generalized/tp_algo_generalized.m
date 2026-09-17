@@ -59,7 +59,7 @@ parfor (ix = 1:nx, M)
             for e = 1:nE
                 z = F.(els{e})(:);
                 md(iy,e) = mean(abs(z), 'omitnan');
-                ar(iy,e) = atan2(mean(sin(angle(z)),'omitnan'), mean(cos(angle(z)),'omitnan'));
+                ar(iy,e) = atan2(mean(sin(atan2(imag(z), real(z))),'omitnan'), mean(cos(atan2(imag(z), real(z))),'omitnan'));
                 cp(iy,e) = mean(z, 'omitnan');
             end
         end

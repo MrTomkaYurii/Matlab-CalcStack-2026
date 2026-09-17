@@ -4,26 +4,43 @@ function run_TwoPoint_Pipeline(cfgOverride)
 %       run_TwoPoint_Pipeline                 % бере config/cfg_TwoPoint
 %       run_TwoPoint_Pipeline(myCFG)          % бере власну структуру CFG
 %
-%   Для кожного зразка, кожного прикладу і (якщо CFG.phase.enable) кожної
-%   з CFG.phase.numWindows фазових вибірок (Етап 1 ТЗ):
-%       1) завантажує (або синтезує) поляризаційні зображення,
-%       1b) застосовує фазове вікно k (tp_phase_window) — пікселі поза
-%           [0, U_k] опорної фази стають NaN в Ex,Ey УСІХ освітлень,
-%       2) обчислює 16 комплексних елементів Мюллера f_ik,
-%       3) зберігає сиру структуру результату (result.mat),
+%   Для кожного зразка й кожного прикладу:
+%       1) завантажує (або синтезує) поляризаційні зображення (ПОВНІ,
+%          без жодної фазової маски),
+%       2) рахує УСІ увімкнені алгоритми (CFG.algorithms) РІВНО ОДИН РАЗ
+%          на цьому повному кадрі (16 елементів f_ik, усі напрями/кроки),
+%       3) якщо CFG.phase.enable — для КОЖНОГО з CFG.phase.numWindows
+%          фазових вікон k ріже КОЖЕН елемент f_ik ОКРЕМО за ЙОГО
+%          ВЛАСНИМ arg(f_ik) (tp_phase_window_element, [0, U_k], стягується до 0°) і
+%          зберігає в phase_XX/algo/.../result.mat — так само, як
+%          зберігав би немасковану версію, якби фазові вікна були вимкнені.
 %       4) будує всі увімкнені подання (maps/sections/wavelet/...) і
-%          текстову таблицю статистичних моментів,
-%          пропускаючи розподіли, що не пройшли контроль якості.
+%          текстову таблицю статистичних моментів для КОЖНОГО вікна.
 %   Щойно зразок (усі приклади) дорахований — одразу збирає його дані для
 %   Горського (tp_collect_sample_for_horsky, Етап 3 ТЗ), без ручного
 %   запуску run_TwoPoint_CollectForHorsky.
+%
+%   Чому фазова маска тепер ПІСЛЯ розрахунку f_ik, а не ДО (як робив
+%   старий tp_phase_window.m на сирих Ex,Ey ОДНОГО освітлення refPol):
+%   критерій "arg(Ey)-arg(Ex) освітлення inRC" алгебраїчно взагалі не
+%   входить у формулу f_i1/f_i2/f_i3 (tp_fik_pair.m розд.4 — лише f_i4
+%   через ARC,BRC) — тобто для 12 із 16 елементів стара маска була
+%   стороннім критерієм, ніяк не пов'язаним з величиною, яку рахували
+%   (підтверджено емпірично: стат. моменти між вікнами майже не мінялись).
+%   Нова версія (tp_phase_window_element.m) різатиме КОЖЕН елемент за
+%   ЙОГО ВЛАСНИМ аргументом — критерій за конструкцією прив'язаний до
+%   величини. Побічний ефект: 'orthogonal'/'polar'/'generalized' тепер
+%   рахуються РІВНО ОДИН РАЗ на зразок (раніше — по разу на кожне з
+%   CFG.phase.numWindows вікон із тим самим немаскованим входом) — і
+%   швидше, і саме тому й правильніше для 'XY' (сума OX+OY бралась би з
+%   диска, уже провіконеного ЧУЖИМ по суті критерієм для XY).
 %
 %   Усім керує CFG (config/cfg_TwoPoint.m) — розширюйте саме там.
 
 here = fileparts(mfilename('fullpath'));
 addpath(fullfile(here,'config'), genpath(fullfile(here,'core')), ...
         fullfile(here,'io'),     fullfile(here,'viz'), fullfile(here,'simulation'), ...
-        fullfile(here,'analysis'));
+        fullfile(here,'analysis_ММ'));
 
 if nargin >= 1 && isstruct(cfgOverride)
     CFG = cfgOverride;
@@ -38,8 +55,8 @@ fprintf('source = %s | crop = %d x %d | algorithms = {%s}\n', ...
 
 phaseOn = isfield(CFG,'phase') && isfield(CFG.phase,'enable') && CFG.phase.enable;
 if phaseOn
-    fprintf('phase windows = %d (refPol=%s, [0,2pi] .. [0,%.3gpi])\n', ...
-            CFG.phase.numWindows, CFG.phase.refPol, CFG.phase.upperMin/pi);
+    fprintf('phase windows = %d, per-element arg(f_ik) в [0, U_k], стягується до 0° (U_k: [0,2pi] .. [0,%.3gpi])\n', ...
+            CFG.phase.numWindows, CFG.phase.upperMin/pi);
 end
 
 % Для 'real' і 'mat' обробляються ВСІ підтеки з CFG.paths.examples на кожен
@@ -92,36 +109,38 @@ for s = 1:numel(CFG.samples)
             fclose(fid);
         end
 
+        % --- крок 2: усі алгоритми РІВНО ОДИН РАЗ на ПОВНОМУ (немаскованому)
+        %     кадрі — фазова маска (якщо є) накладається пізніше, per-element,
+        %     на вже ГОТОВИЙ f_ik (computeAlgorithmsOnce нижче).
+        cache = computeAlgorithmsOnce(IMG, CFG, sampleOut, sampleLabel);
+
         if ~phaseOn
-            ctx = struct('sample', sampleName, 'example', example, 'phase_index', 1, 'phase_deg', NaN);
-            rowsCell = runAlgorithms(IMG, CFG, sampleOut, sampleLabel, ctx);
+            ctx = struct('sample', sampleName, 'example', example, 'phase_index', NaN, 'phase_deg', NaN);
+            rowsCell = saveWindowedResults(cache, CFG, sampleOut, sampleLabel, ctx);
             appendAnalytics(CFG, rowsCell, sampleLabel);
             continue;
         end
 
         U = tp_phase_window_bounds(CFG);
         for k = 1:CFG.phase.numWindows
-            [IMGk, info] = tp_phase_window(IMG, CFG, k);
             % Межа вікна ПРЯМО в назві теки (частка pi, 2 знаки — щоб не було
             % "соті" на весь екран), і номер попереду — для сортування:
             %   phase_01_[0-2.00pi] ... phase_08_[0-0.25pi]
+            % (лейбл — та сама ШИРИНА U_k, що й завжди; фактичний діапазон
+            % arg(f_ik) — [0, U_k] (mod 2pi), стягується до 0° — tp_phase_window_element.m)
             phaseFolder  = tp_phase_folder_name(CFG, k);
             phaseOut     = fullfile(sampleOut, phaseFolder);
             phaseLabel   = sprintf('%s / %s', sampleLabel, phaseFolder);
-            fprintf('  %s : keptFrac=%.3f\n', phaseFolder, info.keptFrac);
 
             outDir = fullfile(CFG.paths.saveRoot, phaseOut);
             if ~exist(outDir,'dir'); mkdir(outDir); end
-            writePhaseInfo(fullfile(outDir,'phase_info.txt'), CFG, info);
-            try
-                viz_phase_mask(info.deltaRef, info.mask, info, sampleLabel, CFG, outDir);
-            catch ME
-                fprintf(2, '    [viz fail] phase_mask: %s\n', ME.message);
-            end
 
             ctx = struct('sample', sampleName, 'example', example, ...
                          'phase_index', k, 'phase_deg', round(U(k)/pi*180));
-            rowsCell = runAlgorithms(IMGk, CFG, phaseOut, phaseLabel, ctx);
+            [rowsCell, keptFracByAlgo] = saveWindowedResults(cache, CFG, phaseOut, phaseLabel, ctx);
+            writePhaseInfo(fullfile(outDir,'phase_info.txt'), CFG, k, keptFracByAlgo);
+            fprintf('  %s : per-element arg-вікно [0, %.3fpi]\n', phaseFolder, U(k)/pi);
+
             appendAnalytics(CFG, rowsCell, phaseLabel);
         end
 
@@ -170,102 +189,182 @@ fprintf('\n=== done. Results in: %s ===\n', CFG.paths.saveRoot);
 end
 
 % ------------------------------------------------------------------------
-function rowsCell = runAlgorithms(IMG, CFG, sampleOut, sampleLabel, ctx)
-% Рахує й зберігає всі увімкнені алгоритми (CFG.algorithms) для ОДНОГО
-% вже завантаженого (і, можливо, фазово-замаскованого) IMG. Просто:
-% порахував -> зберіг -> намалював -> порахував аналітику (Крок 1, з
-% УЖЕ готового R/Rd — без перечитування result.mat пізніше). Без резюме/
-% домерджування — якщо треба перерахувати, видаляється відповідна тека
-% результатів і пайплайн запускається заново.
+function cache = computeAlgorithmsOnce(IMG, CFG, sampleOut, sampleLabel)
+% Рахує КОЖЕН алгоритм з CFG.algorithms РІВНО ОДИН РАЗ на ПОВНОМУ
+% (немаскованому) IMG — незалежно від того, скільки фазових вікон
+% застосовуватиметься пізніше (saveWindowedResults ріже ГОТОВИЙ f_ik).
 %
-% ctx = struct('sample',.., 'example',.., 'phase_index',.., 'phase_deg',..)
-% rowsCell — рядки аналітики (cell of table), для appendAnalytics.
+% cache.ortho : R з tp_algo_orthogonal (усі напрями/кроки), або [] —
+%               рахується, якщо 'orthogonal' АБО 'XY' у CFG.algorithms
+%               (XY-у потрібен ПОВНИЙ, немаскований OX/OY).
+% cache.polar : R з tp_algo_polar, або [].
+% cache.gen   : struct('step_<d>', R) — по одному R на кожен CFG.gen.steps.
 
-rowsCell = {};
-% 'XY' збирається з orthogonal-результату -> завжди обробляємо його ПІСЛЯ
-% решти (зокрема після 'orthogonal'), незалежно від порядку в CFG.algorithms.
-algoOrder = [CFG.algorithms(~strcmpi(CFG.algorithms,'XY')), CFG.algorithms(strcmpi(CFG.algorithms,'XY'))];
-for a = 1:numel(algoOrder)
-    algo = algoOrder{a};
+cache = struct('ortho', [], 'polar', [], 'gen', struct());
 
-    if strcmpi(algo, 'generalized')
-        % ПОКРОКОВО: порахував крок -> зберіг -> намалював -> наступний крок.
-        for si = 1:numel(CFG.gen.steps)
-            step = CFG.gen.steps(si);
-            try
-                t = tic;
-                R = tp_algo_generalized(IMG, CFG, sampleOut, step);
-                fprintf('    [generalized step_%d] computed in %.1f s\n', step, toc(t));
-
-                outDir = fullfile(CFG.paths.saveRoot, sampleOut, algo, sprintf('step_%d', step));
-                if ~exist(outDir,'dir'); mkdir(outDir); end
-                save(fullfile(outDir,'result.mat'), 'R', '-v7.3');
-
-                tp_visualize(R, CFG);
-                newRows = tp_analytics_rows_for_result(R, ctx.sample, ctx.example, algo, 'XY', ...
-                                                        step, ctx.phase_index, ctx.phase_deg, CFG);
-                rowsCell = [rowsCell, newRows]; %#ok<AGROW>
-            catch ME
-                fprintf(2, '    [fail] %s / generalized step_%d: %s\n', sampleLabel, step, ME.message);
-            end
-        end
-        continue;
-    end
-
-    if strcmpi(algo, 'XY')
-        % ЗВЕДЕНА карта: OX + OY (без усереднення). По кроках CFG.ortho.steps,
-        % як generalized. OX/OY беруться з orthogonal-результату, якщо він на
-        % диску; інакше рахуються в пам'яті з IMG (окремо НЕ зберігаються).
-        for si = 1:numel(CFG.ortho.steps)
-            step = CFG.ortho.steps(si);
-            try
-                R = tp_algo_XY(IMG, CFG, sampleOut, step);
-                outDir = fullfile(CFG.paths.saveRoot, sampleOut, 'XY', sprintf('step_%d', step));
-                if ~exist(outDir,'dir'); mkdir(outDir); end
-                save(fullfile(outDir,'result.mat'), 'R', '-v7.3');
-
-                tp_visualize(R, CFG);
-                newRows = tp_analytics_rows_for_result(R, ctx.sample, ctx.example, 'XY', 'XY', ...
-                                                        step, ctx.phase_index, ctx.phase_deg, CFG);
-                rowsCell = [rowsCell, newRows]; %#ok<AGROW>
-            catch ME
-                fprintf(2, '    [fail] %s / XY step_%d: %s\n', sampleLabel, step, ME.message);
-            end
-        end
-        continue;
-    end
-
+needOrtho = any(strcmpi(CFG.algorithms,'orthogonal')) || any(strcmpi(CFG.algorithms,'XY'));
+if needOrtho
     try
         t = tic;
-        switch lower(algo)                   % крок 2: обчислення f_ik
-            case 'orthogonal', R = tp_algo_orthogonal(IMG, CFG, sampleOut);
-            case 'polar',      R = tp_algo_polar(IMG, CFG, sampleOut);
-            otherwise
-                warning('run_TwoPoint_Pipeline:algo', 'Невідомий алгоритм "%s" — пропущено.', algo);
-                continue;
-        end
-        fprintf('    [%s] computed in %.1f s\n', algo, toc(t));
+        cache.ortho = tp_algo_orthogonal(IMG, CFG, sampleOut);
+        fprintf('    [orthogonal] computed in %.1f s (повний кадр, без фазової маски)\n', toc(t));
+    catch ME
+        fprintf(2, '    [fail] %s / orthogonal (розрахунок): %s\n', sampleLabel, ME.message);
+    end
+end
 
-        % крок 3: зберегти — ОКРЕМИЙ result.mat у КОЖНІЙ підтеці напрям\крок
-        % (orthogonal\OX\step_N\result.mat), так само як generalized уже
-        % зберігає по кроках, а не один спільний файл на весь алгоритм.
+if any(strcmpi(CFG.algorithms,'polar'))
+    try
+        t = tic;
+        cache.polar = tp_algo_polar(IMG, CFG, sampleOut);
+        fprintf('    [polar] computed in %.1f s (повний кадр, без фазової маски)\n', toc(t));
+    catch ME
+        fprintf(2, '    [fail] %s / polar (розрахунок): %s\n', sampleLabel, ME.message);
+    end
+end
+
+if any(strcmpi(CFG.algorithms,'generalized'))
+    for si = 1:numel(CFG.gen.steps)
+        step = CFG.gen.steps(si);
+        try
+            t = tic;
+            R = tp_algo_generalized(IMG, CFG, sampleOut, step);
+            fprintf('    [generalized step_%d] computed in %.1f s (повний кадр)\n', step, toc(t));
+            cache.gen.(sprintf('step_%d', step)) = R;
+        catch ME
+            fprintf(2, '    [fail] %s / generalized step_%d (розрахунок): %s\n', sampleLabel, step, ME.message);
+        end
+    end
+end
+end
+
+% ------------------------------------------------------------------------
+function [rowsCell, keptFracByAlgo] = saveWindowedResults(cache, CFG, sampleOut, sampleLabel, ctx)
+% Бере кешовані (ОДИН РАЗ пораховані, немасковані) результати й:
+%   - якщо CFG.phase.enable і ctx.phase_index не NaN — ріже КОЖЕН елемент
+%     КОЖНОГО кешованого результату за ЙОГО ВЛАСНИМ arg (tp_phase_window_
+%     result -> tp_phase_window_element), окремо для orthogonal/polar/
+%     generalized/XY;
+%   - зберігає result.mat у ТІ САМІ шляхи, що й раніше (sampleOut містить
+%     фазову підтеку, якщо вона є — викликається так само, як старий
+%     runAlgorithms);
+%   - малює (tp_visualize) і формує рядки аналітики.
+%
+% ctx = struct('sample',.., 'example',.., 'phase_index',.., 'phase_deg',..)
+% rowsCell       — рядки аналітики (cell of table), для appendAnalytics.
+% keptFracByAlgo — struct('orthogonal',...,'polar',...,'generalized',...,'XY',...)
+%                  кожен = struct(dir).(elem) = частка збережених пікселів (QC),
+%                  або [] якщо алгоритм не рахувався/вікно не накладалось.
+
+rowsCell = {};
+keptFracByAlgo = struct('orthogonal', [], 'polar', [], 'generalized', [], 'XY', []);
+phaseOn = isfield(CFG,'phase') && isfield(CFG.phase,'enable') && CFG.phase.enable ...
+          && isfield(ctx,'phase_index') && ~isnan(ctx.phase_index);
+k = ctx.phase_index;
+
+% ---- orthogonal ----
+if ~isempty(cache.ortho) && any(strcmpi(CFG.algorithms,'orthogonal'))
+    try
+        R = cache.ortho;
+        if phaseOn
+            [R, kf] = tp_phase_window_result(R, CFG, k);
+            keptFracByAlgo.orthogonal = kf;
+        end
         for di = 1:numel(R.dirs)
             dirName = R.dirs{di};
             sep = R.sep.(dirName);
-            outDir = fullfile(CFG.paths.saveRoot, sampleOut, algo, sep.direction, sprintf('step_%d', sep.delta));
+            outDir = fullfile(CFG.paths.saveRoot, sampleOut, 'orthogonal', sep.direction, sprintf('step_%d', sep.delta));
             if ~exist(outDir,'dir'); mkdir(outDir); end
             Rd = tp_slice_result_dir(R, dirName);
             save(fullfile(outDir,'result.mat'), 'Rd', '-v7.3');
-
-            newRows = tp_analytics_rows_for_result(Rd, ctx.sample, ctx.example, algo, sep.direction, ...
+            newRows = tp_analytics_rows_for_result(Rd, ctx.sample, ctx.example, 'orthogonal', sep.direction, ...
                                                     sep.delta, ctx.phase_index, ctx.phase_deg, CFG);
             rowsCell = [rowsCell, newRows]; %#ok<AGROW>
         end
-
-        tp_visualize(R, CFG);                % крок 4: візуалізація (з ПОВНОГО R — усі напрями разом)
+        tp_visualize(R, CFG);
     catch ME
-        fprintf(2, '    [fail] %s / %s: %s\n', sampleLabel, algo, ME.message);
+        fprintf(2, '    [fail] %s / orthogonal (вікно/збереження): %s\n', sampleLabel, ME.message);
     end
+end
+
+% ---- polar ----
+if ~isempty(cache.polar) && any(strcmpi(CFG.algorithms,'polar'))
+    try
+        R = cache.polar;
+        if phaseOn
+            [R, kf] = tp_phase_window_result(R, CFG, k);
+            keptFracByAlgo.polar = kf;
+        end
+        for di = 1:numel(R.dirs)
+            dirName = R.dirs{di};
+            sep = R.sep.(dirName);
+            outDir = fullfile(CFG.paths.saveRoot, sampleOut, 'polar', sep.direction, sprintf('step_%d', sep.delta));
+            if ~exist(outDir,'dir'); mkdir(outDir); end
+            Rd = tp_slice_result_dir(R, dirName);
+            save(fullfile(outDir,'result.mat'), 'Rd', '-v7.3');
+            newRows = tp_analytics_rows_for_result(Rd, ctx.sample, ctx.example, 'polar', sep.direction, ...
+                                                    sep.delta, ctx.phase_index, ctx.phase_deg, CFG);
+            rowsCell = [rowsCell, newRows]; %#ok<AGROW>
+        end
+        tp_visualize(R, CFG);
+    catch ME
+        fprintf(2, '    [fail] %s / polar (вікно/збереження): %s\n', sampleLabel, ME.message);
+    end
+end
+
+% ---- generalized ----
+if any(strcmpi(CFG.algorithms,'generalized'))
+    gfn = fieldnames(cache.gen);
+    kfAll = struct();
+    for gi = 1:numel(gfn)
+        step = sscanf(gfn{gi}, 'step_%d');
+        try
+            R = cache.gen.(gfn{gi});
+            if phaseOn
+                [R, kf] = tp_phase_window_result(R, CFG, k);
+                kfAll.(gfn{gi}) = kf;
+            end
+            outDir = fullfile(CFG.paths.saveRoot, sampleOut, 'generalized', sprintf('step_%d', step));
+            if ~exist(outDir,'dir'); mkdir(outDir); end
+            save(fullfile(outDir,'result.mat'), 'R', '-v7.3');
+            newRows = tp_analytics_rows_for_result(R, ctx.sample, ctx.example, 'generalized', 'XY', ...
+                                                    step, ctx.phase_index, ctx.phase_deg, CFG);
+            rowsCell = [rowsCell, newRows]; %#ok<AGROW>
+            tp_visualize(R, CFG);
+        catch ME
+            fprintf(2, '    [fail] %s / generalized step_%d (вікно/збереження): %s\n', sampleLabel, step, ME.message);
+        end
+    end
+    keptFracByAlgo.generalized = kfAll;
+end
+
+% ---- XY: ЗВЕДЕНА OX+OY з КЕШОВАНОГО немаскованого orthogonal (у пам'яті) —
+%      НЕ з диску, інакше читала б уже провіконений (ЧУЖИМ, per-element,
+%      критерієм) orthogonal.result.mat цього ж k, і сума на пікселях, де
+%      один з рукавів (OX чи OY) випав з СВОГО вікна, вийшла б частковою,
+%      а не істинним OX+OY. tp_algo_XY.m тепер приймає RorthoCache. ----
+if any(strcmpi(CFG.algorithms,'XY'))
+    kfAll = struct();
+    for si = 1:numel(CFG.ortho.steps)
+        step = CFG.ortho.steps(si);
+        try
+            R = tp_algo_XY([], CFG, sampleOut, step, cache.ortho);
+            if phaseOn
+                [R, kf] = tp_phase_window_result(R, CFG, k);
+                kfAll.(sprintf('step_%d', step)) = kf;
+            end
+            outDir = fullfile(CFG.paths.saveRoot, sampleOut, 'XY', sprintf('step_%d', step));
+            if ~exist(outDir,'dir'); mkdir(outDir); end
+            save(fullfile(outDir,'result.mat'), 'R', '-v7.3');
+            newRows = tp_analytics_rows_for_result(R, ctx.sample, ctx.example, 'XY', 'XY', ...
+                                                    step, ctx.phase_index, ctx.phase_deg, CFG);
+            rowsCell = [rowsCell, newRows]; %#ok<AGROW>
+            tp_visualize(R, CFG);
+        catch ME
+            fprintf(2, '    [fail] %s / XY step_%d: %s\n', sampleLabel, step, ME.message);
+        end
+    end
+    keptFracByAlgo.XY = kfAll;
 end
 end
 
@@ -282,14 +381,50 @@ end
 end
 
 % ------------------------------------------------------------------------
-function writePhaseInfo(fname, CFG, info)
-% Короткий текстовий супровід фазового вікна — межі й частка збережених
-% пікселів (для QC: чи не забагато NaN на вузьких вікнах).
+function writePhaseInfo(fname, CFG, k, keptFracByAlgo)
+% Короткий текстовий супровід фазового вікна k — межі arg (per-element,
+% ОДНАКОВІ для всіх елементів/алгоритмів, tp_phase_window_element.m) і
+% частка збережених пікселів КОЖНОГО елемента (для QC: чи не забагато
+% NaN на вузьких вікнах) — на відміну від старої версії (один спільний
+% deltaRef-QC на весь зразок), тепер keptFrac різний по елементах.
+U = tp_phase_window_bounds(CFG);
+lower = 0; upper = U(k);
+
 fid = fopen(fname, 'w', 'n', 'UTF-8');
-fprintf(fid, 'Фазова вибірка %d з %d\n', info.index, CFG.phase.numWindows);
-fprintf(fid, 'Опорна фаза: delta_ref = angle(Ey) - angle(Ex), освітлення %s\n', CFG.phase.refPol);
-fprintf(fid, 'Вікно: [%.6f, %.6f] рад  ([%.4f, %.4f] * pi)\n', ...
-        info.lower, info.upper, info.lower/pi, info.upper/pi);
-fprintf(fid, 'Збережено пікселів: %.2f%%\n', 100*info.keptFrac);
+fprintf(fid, 'Фазова вибірка %d з %d\n', k, CFG.phase.numWindows);
+fprintf(fid, 'Критерій: власний arg(f_ik) КОЖНОГО елемента (tp_phase_window_element.m)\n');
+fprintf(fid, 'Вікно: [%.6f, %.6f] рад  ([%.4f, %.4f] * pi)\n', lower, upper, lower/pi, upper/pi);
+fprintf(fid, '\nЗбережено пікселів (keptFrac), по алгоритму/напряму/елементу:\n');
+
+algoNames = fieldnames(keptFracByAlgo);
+for ai = 1:numel(algoNames)
+    algoName = algoNames{ai};
+    kf = keptFracByAlgo.(algoName);
+    if isempty(kf), continue; end
+    fprintf(fid, '  %s:\n', algoName);
+    % kf: struct(dir).(elem)=frac  АБО  struct(step_d).(dir).(elem)=frac (generalized/XY)
+    L1 = fieldnames(kf);
+    for i1 = 1:numel(L1)
+        v1 = kf.(L1{i1});
+        if isstruct(v1) && ~isfield(v1, 'keptFrac') && ~isnumeric(v1)
+            L2 = fieldnames(v1);
+            if ~isempty(L2) && isnumeric(v1.(L2{1}))
+                % struct(dir).(elem)=frac
+                for i2 = 1:numel(L2)
+                    fprintf(fid, '    %s / %s : %.1f%%\n', L1{i1}, L2{i2}, 100*v1.(L2{i2}));
+                end
+            else
+                % struct(step).(dir).(elem)=frac
+                for i2 = 1:numel(L2)
+                    d2 = v1.(L2{i2});
+                    e2 = fieldnames(d2);
+                    for i3 = 1:numel(e2)
+                        fprintf(fid, '    %s / %s / %s : %.1f%%\n', L1{i1}, L2{i2}, e2{i3}, 100*d2.(e2{i3}));
+                    end
+                end
+            end
+        end
+    end
+end
 fclose(fid);
 end

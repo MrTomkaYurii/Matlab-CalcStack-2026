@@ -150,7 +150,7 @@ if full
 else
     E = complex(nan(N));  E(rr,cc) = z;
 end
-s = struct('cplx', E, 'mod', abs(E), 'arg', angle(E));
+s = struct('cplx', E, 'mod', abs(E), 'arg', atan2(imag(E), real(E)));
 end
 
 function R = addDir(R, dir, N, rho, base)

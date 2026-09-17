@@ -38,6 +38,10 @@ for w = 1:W
     end
 end
 modClim = cliplim(poolMod, FIG.color.modClipPct);
+modClim(1) = 0;   % модуль фізично невід'ємний
+if isfield(FIG.color, 'modMax') && ~isempty(FIG.color.modMax) && isfinite(FIG.color.modMax)
+    modClim(2) = min(modClim(2), FIG.color.modMax);
+end
 argClim = FIG.color.argClim;
 if isempty(poolArg); argClim = [-pi pi]; end
 
@@ -106,7 +110,7 @@ for b = 1:W
                 set(him, 'AlphaData', isfinite(M));
                 colormap(ax, rgb);  clim(ax, cl);  axis(ax, 'image');
                 set(ax, 'Color',FIG.color.nan, 'YDir',FIG.axis.yDir, 'Box','on', 'Layer','top', ...
-                        'LineWidth',FIG.line.axis, 'XTick',[], 'YTick',[]);
+                        'LineWidth',FIG.line.axis, 'XColor','k', 'YColor','k', 'XTick',[], 'YTick',[]);
                 if FIG.map.grid
                     set(ax, 'GridColor',FIG.map.gridColor, 'GridAlpha',FIG.map.gridAlpha, ...
                             'XGrid','on', 'YGrid','on');

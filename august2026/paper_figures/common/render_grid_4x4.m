@@ -17,20 +17,24 @@ function figH = render_grid_4x4(elems, elemTex, winData, FIG, kind)
 nCol = 4;
 comp = {'mod','arg','mod','arg'};
 eIdx = [1 1 2 2];
-isSurf = strcmp(kind,'acf');          % низ = 3D-поверхня АКФ, а не гістограма
+isCut = strcmp(kind,'acf');           % низ Fig2 = 1D-переріз АКФ (спад + півширина)
+isWavCut = strcmp(kind,'wav');        % низ = 2 перерізи |W(a_fix,b)|, а не гістограма
+acfW  = 100;                          % спільне піввікно лагів (px) для цієї групи; ставить make_grid_pair
+if isCut && isfield(FIG,'acf') && isfield(FIG.acf,'win') && ~isempty(FIG.acf.win)
+    acfW = FIG.acf.win;
+end
 
 g  = FIG.geom;  fs = FIG.font.size;
 Wa = g.aspectW;
 mS = (Wa - g.marginL - g.marginR - (nCol-1)*g.colGap) / nCol;
 isMfr  = strcmp(kind,'mfr');          % обидва ряди блоку — лінійні графіки (D(q), f(h))
 hdrH   = tern(isMfr, g.titleH + 3, g.cbarStripH + g.cbarTickH + g.titleH);
-botH   = tern(isSurf, g.surf3dH, g.histH);
+botH   = g.histH;
 rowH    = [mS botH mS botH];
 % зона підписів осі безпосередньо під панеллю (числа + назва осі); нижче неї —
 % літера панелі з ОДНАКОВИМ відступом g.letterGap понад і під нею.
 letterH = 0.30 * fs;                                    % ~візуальна висота літери, мм (10pt -> 3.0)
 labZone = [g.axisLabelH g.axisLabelH g.axisLabelH g.axisLabelH];
-if isSurf; labZone([2 4]) = g.surf3dLabelH; end
 mBelow  = labZone + 2*g.letterGap + letterH;            % повна смуга під рядом
 rowKind = {'map','bot','map','bot'};
 rowWin  = [1 1 2 2];
@@ -72,6 +76,10 @@ end
 switch kind
     case 'raw'
         modClim = cliplim(poolMod, FIG.color.modClipPct);
+        modClim(1) = 0;   % модуль фізично невід'ємний, починається з 0
+        if isfield(FIG.color, 'modMax') && ~isempty(FIG.color.modMax) && isfinite(FIG.color.modMax)
+            modClim(2) = min(modClim(2), FIG.color.modMax);
+        end
         argClim = FIG.color.argClim;
     case 'acf'
         modClim = [0 1];  argClim = [0 1];
@@ -84,6 +92,40 @@ switch kind
 end
 modEdges = linspace(modClim(1), modClim(2), FIG.hist.nbins+1);
 argEdges = linspace(argClim(1), argClim(2), FIG.hist.nbins+1);
+
+% ---- Y-максимуми гістограм: ОКРЕМО для модулів і ОКРЕМО для аргументів ----
+% Кожен тип має свій незалежний інтервал OY.
+% Для аргументів інтервал однаковий для всіх arg у межах фігури (ymaxArg).
+% Для модулів — свій спільний інтервал (ymaxMod) або per-window.
+ymaxMod = 0;
+ymaxArg = 0;
+blockYmaxMod = zeros(1,2);
+blockYmaxArg = zeros(1,2);
+
+if any(strcmp(kind, {'raw','psd','skel'}))   % 'wav' тепер перерізи, не гістограма — власний ymax нижче
+    for bl = 1:2
+        D = winData{bl};
+        for c = 1:nCol
+            elem = elems{eIdx(c)};
+            P = D.prep.(elem).(comp{c});
+            edgc = tern(P.isMod, modEdges, argEdges);
+            v = P.histSrc;  v = v(isfinite(v));
+            cnt = histcounts(v, edgc, 'Normalization', FIG.hist.norm);
+            pk = max([cnt eps]);
+            if P.isMod
+                ymaxMod = max(ymaxMod, pk);
+                blockYmaxMod(bl) = max(blockYmaxMod(bl), pk);
+            else
+                ymaxArg = max(ymaxArg, pk);
+                blockYmaxArg(bl) = max(blockYmaxArg(bl), pk);
+            end
+        end
+    end
+    ymaxMod = ymaxMod * 1.1;
+    ymaxArg = ymaxArg * 1.1;
+    blockYmaxMod = blockYmaxMod * 1.1;
+    blockYmaxArg = blockYmaxArg * 1.1;
+end
 
 % ---- overlay для підписів ----
 axOv = axes('Parent',figH, 'Units','normalized', 'Position',[0 0 1 1], ...
@@ -112,8 +154,13 @@ for r = 1:4
         if strcmp(rowKind{r},'map')
             switch kind
                 case {'raw','acf','psd'}
-                    him = imagesc(ax, P.x, P.y, P.img);
-                    set(him, 'AlphaData', isfinite(P.img));
+                    px = P.x;  py = P.y;  pimg = P.img;
+                    if strcmp(kind,'acf')      % спільне вікно лагів на весь FigN
+                        kx = abs(P.x) <= acfW;   ky = abs(P.y) <= acfW;
+                        px = P.x(kx);  py = P.y(ky);  pimg = P.img(ky, kx);
+                    end
+                    him = imagesc(ax, px, py, pimg);
+                    set(him, 'AlphaData', isfinite(pimg));
                     set(ax, 'Color',FIG.color.nan, 'YDir',FIG.axis.yDir, ...
                             'TickLength',[0.02 0.02], 'XColor','k', 'YColor','k');
                     colormap(ax, rgb);  clim(ax, cl);  axis(ax, 'image');
@@ -121,9 +168,9 @@ for r = 1:4
                         set(ax, 'GridColor',FIG.map.gridColor, 'GridAlpha',FIG.map.gridAlpha, ...
                                 'XGrid','on', 'YGrid','on');
                     end
-                    if strcmp(kind,'acf')       % контур напівширини (0.5) поверх 2D-АКФ
+                    if strcmp(kind,'acf') && any(pimg(:) >= FIG.acf.hwLevel) && any(pimg(:) <= FIG.acf.hwLevel)
                         hold(ax,'on');
-                        contour(ax, P.x, P.y, P.img, [FIG.acf.hwLevel FIG.acf.hwLevel], ...
+                        contour(ax, px, py, pimg, [FIG.acf.hwLevel FIG.acf.hwLevel], ...
                                 'LineColor',FIG.acf.hwColor, 'LineWidth',FIG.acf.hwW);
                         hold(ax,'off');
                     end
@@ -135,6 +182,12 @@ for r = 1:4
                             'TickLength',[0.02 0.02]);
                     if P.yLog; set(ax, 'YScale','log'); end
                     axis(ax, 'tight');
+                    if isfinite(P.wcutALo) && isfinite(P.wcutAHi)   % позначити перерізи a=low/high (без легенди)
+                        hold(ax,'on');
+                        yline(ax, P.wcutALo, '--', 'Color',[0.20 0.60 0.25], 'LineWidth',1.1);
+                        yline(ax, P.wcutAHi, '--', 'Color',[0.85 0.35 0.10], 'LineWidth',1.1);
+                        hold(ax,'off');
+                    end
 
                 case 'skel'                     % scatter WTMM-скелетону
                     scatter(ax, P.skB, P.skA, FIG.skel.markerSize, P.skH, 'filled');
@@ -177,32 +230,28 @@ for r = 1:4
             end
             lab(colX(c) + mS/2, yb(r) + rowH(r) + g.titleH*0.5, ttl);
 
-        elseif isSurf
-            % 3D-поверхня тієї ж 2D-АКФ (даунсемпл важкого масиву).
-            N  = FIG.acf.surf3dN;
-            xi = linspace(1, numel(P.x), min(N, numel(P.x)));
-            yi = linspace(1, numel(P.y), min(N, numel(P.y)));
-            Zd = interp2(P.img, xi, yi.', 'linear');
-            [XX, YY] = meshgrid(interp1(1:numel(P.x), P.x, xi), interp1(1:numel(P.y), P.y, yi));
-            if isempty(FIG.acf.surf3dEdge)
-                surf(ax, XX, YY, Zd, 'EdgeColor','none', 'FaceColor','interp');
-            else
-                surf(ax, XX, YY, Zd, 'EdgeColor',FIG.acf.surf3dEdge, 'LineWidth',0.15, 'FaceColor','interp');
+        elseif isCut
+            % 1D-переріз 2D-АКФ через центр (лаг=0): спадання значень + півширина.
+            % Те саме спільне вікно лагів, що й у 2D-карти над панеллю.
+            kc = abs(P.cutLag) <= acfW;
+            lagX = P.cutLag(kc);  lagX = lagX(:).';
+            cv   = P.cutCurve(kc);  cv = cv(:).';
+            plot(ax, lagX, cv, '-', 'Color',[0.20 0.35 0.75], 'LineWidth',1.3);
+            hold(ax,'on');
+            plot(ax, [lagX(1) lagX(end)], [FIG.acf.hwLevel FIG.acf.hwLevel], '--', ...
+                 'Color',[0.55 0.55 0.55], 'LineWidth',0.7);          % рівень 0.5
+            for xx = [P.loLag P.hiLag]
+                if isfinite(xx) && xx > lagX(1) && xx < lagX(end)
+                    plot(ax, [xx xx], [0 FIG.acf.hwLevel], ':', 'Color',[0.80 0.20 0.20], 'LineWidth',1.0);
+                end
             end
-            colormap(ax, rgb);  clim(ax, [0 1]);
-            set(ax, 'Color','w', 'XColor','k', 'YColor','k', 'ZColor','k', ...
-                    'XLim',[P.x(1) P.x(end)], 'YLim',[P.y(1) P.y(end)], 'ZLim',[0 1], ...
-                    'ZTick',[0 0.5 1], 'XTick',[P.x(1) 0 P.x(end)], 'YTick',[P.y(1) 0 P.y(end)], ...
-                    'TickLength',[0.02 0.02], 'Projection','orthographic');
-            view(ax, FIG.acf.surf3dView);
-            xlabel(ax, '\Deltax', 'Color','k');
-            ylabel(ax, '\Deltay', 'Color','k');
-            zlabel(ax, 'ACF', 'Color','k');
-            % OuterPosition (а не Position) -> MATLAB вписує куб + підписи
-            % осей у клітинку, нічого не вилазить на сусідів.
-            ax.PositionConstraint = 'outerposition';
-            ax.OuterPosition = nrm(colX(c) - g.colGap*0.30, yb(r) - labZone(r), ...
-                                   mS + g.colGap*0.55, rowH(r) + labZone(r));
+            hold(ax,'off');
+            set(ax, 'Color','w', 'XLim',[lagX(1) lagX(end)], 'YLim',[0 1.03], ...
+                    'YTick',[0 0.5 1], 'TickLength',[0.02 0.02], 'Layer','top', ...
+                    'XGrid','on', 'YGrid','on', 'GridColor',[0.35 0.35 0.35], ...
+                    'GridAlpha',0.5, 'GridLineStyle','-', 'XColor','k', 'YColor','k');
+            xlabel(ax, P.cutXlab, 'Color','k');
+            ylabel(ax, 'ACF', 'Color','k');
 
         elseif isMfr
             % ряд 2 — спектр сингулярностей f(h), з підписаною Delta h
@@ -231,6 +280,22 @@ for r = 1:4
             xlabel(ax, 'h', 'Color','k');
             ylabel(ax, 'f(h)', 'Color','k');
 
+        elseif isWavCut
+            % два перерізи |W(a_fix,b)| — низький (зелений) і високий (оранж.)
+            % масштаб, ті самі кольори, що й пунктирні лінії на карті вище.
+            plot(ax, P.wcutB, P.wcutLo, '-', 'Color',[0.20 0.60 0.25], 'LineWidth',1.1);
+            hold(ax,'on');
+            plot(ax, P.wcutB, P.wcutHi, '-', 'Color',[0.85 0.35 0.10], 'LineWidth',1.1);
+            hold(ax,'off');
+            yMaxCut = max([P.wcutLo(:); P.wcutHi(:); eps]) * 1.1;
+            set(ax, 'Color','w', 'XLim',[P.wcutB(1) P.wcutB(end)], 'YLim',[0 yMaxCut], ...
+                    'TickLength',[0.02 0.02], 'Layer','top', 'XColor','k', 'YColor','k');
+            lgC = legend(ax, {sprintf('a=%.1f', P.wcutALo), sprintf('a=%.1f', P.wcutAHi)}, ...
+                   'Location','northwest', 'Box','off', 'FontSize',fs-3, 'TextColor','k');
+            lgC.ItemTokenSize = [10 18];   % коротші кольорові лінії-зразки в легенді (типово [30 18])
+            xlabel(ax, P.axX, 'Color','k');
+            ylabel(ax, '|W|', 'Color','k');
+
         else
             % гістограма значень (raw / psd)
             hw = mS * 0.84;
@@ -240,10 +305,19 @@ for r = 1:4
             cnt = histcounts(v, edg, 'Normalization', FIG.hist.norm);
             bar(ax, ctr, cnt, 1, 'FaceColor',FIG.hist.fill, 'EdgeColor',FIG.hist.edge, ...
                 'LineWidth',FIG.hist.edgeW);
-            ymax = max([cnt eps]) * 1.1;
+            if isMod
+                if isfield(FIG.hist,'perWindowMod') && FIG.hist.perWindowMod
+                    ymax = blockYmaxMod(rowWin(r));
+                else
+                    ymax = ymaxMod;
+                end
+            else
+                ymax = ymaxArg;   % єдиний інтервал для всіх аргументів у межах фігури
+            end
             set(ax, 'Color','w', 'XLim',[edg(1) edg(end)], 'YLim',[0 ymax], ...
                     'TickLength',[0.02 0.02], 'YTick',[0 ymax], ...
-                    'YTickLabel',{'0', sprintf('%.2g', ymax/1.1)}, 'XColor','k', 'YColor','k');
+                    'YTickLabel',{'0', explbl(ymax/1.1)}, 'TickLabelInterpreter','tex', ...
+                    'YTickLabelRotation', 90, 'XColor','k', 'YColor','k');
             if strcmp(kind,'raw') && ~isMod
                 set(ax, 'XTick',[-pi 0 pi], 'XTickLabel',{'-\pi','0','\pi'});
             else
@@ -302,14 +376,25 @@ function s = botXlab(kind, isMod, elemTex)
 switch kind
     case 'psd',  s = 'log_{10} PSD';
     case 'wav',  s = '|W(a,b)|';
-    case 'skel', s = 'h = |W| at maxima';
+    case 'skel', s = '|W| at WTMM maxima';
     otherwise                                   % 'raw'
-        if isMod; s = sprintf('|%s|', elemTex); else; s = 'arg (rad)'; end
+        if isMod; s = sprintf('|%s|', elemTex); else; s = sprintf('arg(%s) (rad)', elemTex); end
 end
 end
 
 function M = cmap_rgb(spec, n)
 if isnumeric(spec); M = spec; else; M = feval(spec, n); end
+end
+
+function s = explbl(v)
+% Компактний науковий запис TeX "m x10^{e}" (замість "9.4e+04") для тіків
+% гістограми, коли count сягає тисяч/десятків тисяч на 400x400-пиксельній карті.
+if v == 0; s = '0'; return; end
+e = floor(log10(abs(v)));
+m = v / 10^e;
+if abs(e) < 3; s = num2str(v, '%.2g');
+else;          s = sprintf('%.2g{\\times}10^{%d}', m, e);
+end
 end
 
 function s = numlbl(v)
