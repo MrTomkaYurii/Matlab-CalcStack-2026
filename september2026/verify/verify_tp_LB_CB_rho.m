@@ -45,8 +45,17 @@ errs = [ max(abs(OUT.LB_0_90.mod-abs(LB0_90_ref)))
          max(abs(OUT.LB.mod-abs(LB_ref)))
          max(abs(wrapToPi(OUT.LB.arg-angle(LB_ref)))) ];
 
+% .cplx усіх 5 виходів проти нативних комплексних еталонів (Re і Im разом)
+errsCplx = [ max(abs(OUT.LB_0_90.cplx   - LB0_90_ref))
+             max(abs(OUT.LB_45_135.cplx - LB45_135_ref))
+             max(abs(OUT.CB.cplx        - CB_ref))
+             max(abs(OUT.rho.cplx       - rho_ref))
+             max(abs(OUT.LB.cplx        - LB_ref)) ];
+fprintf('cplx err (LB_0_90, LB_45_135, CB, rho, LB): %s\n', sprintf('%.2e  ', errsCplx));
+errs = [errs; errsCplx];
+
 assert(all(errs < tol), 'tp_LB_CB_rho.m: mismatch vs native complex arithmetic');
-fprintf('\nALL 10 OUTPUTS MATCH native complex log/atan/sqrt to <%.0e. tp_LB_CB_rho.m is verified.\n', tol);
+fprintf('\nALL 10 OUTPUTS (mod, arg) + 5 cplx MATCH native complex log/atan/sqrt to <%.0e. tp_LB_CB_rho.m is verified.\n', tol);
 end
 
 function a = wrapToPi(a)

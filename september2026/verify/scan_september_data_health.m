@@ -5,9 +5,11 @@ function scan_september_data_health()
 %   ey_0.mat тощо — дійсні/нульові замість комплексних). Не покладається
 %   на стару пам'ять (інша тека, дані могли змінитись) — сканує напряму.
 
-matRoot = 'C:\September 2026-Results\Зразки - нові (серпень 2026) mat';
-samples = {'Серце','Мяз живота','Мозг'};
-examples = {'1','2','3'};
+addpath('..');
+CFG = cfg_September();     % шлях і повний перелік зразків/прикладів -- з єдиного конфігу
+matRoot  = CFG.paths.matRoot;
+samples  = CFG.allSamples;
+examples = CFG.allExamples;
 states = {'0','45','90','135','liv','prav'};
 
 fprintf('%-14s %-4s  %s\n', 'Зразок','Прикл','статус (биті канали)');

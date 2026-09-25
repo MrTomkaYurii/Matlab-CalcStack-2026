@@ -15,8 +15,9 @@ ref = 0.5*atan(LB45_135 ./ LB0_90);
 
 errMod = max(abs(OUT.mod - abs(ref)));
 errArg = max(abs(wrapToPi(OUT.arg - angle(ref))));
-fprintf('rho : |.| err=%.3e   arg err=%.3e\n', errMod, errArg);
-assert(errMod<tol && errArg<tol, 'tp_B4_rho.m mismatch vs 0.5*atan(LB45_135/LB0_90)');
+errCplx = max(abs(OUT.cplx - ref));   % rho = P + iQ напряму (Re і Im окремо, не лише mod/arg)
+fprintf('rho : |.| err=%.3e   arg err=%.3e   cplx err=%.3e\n', errMod, errArg, errCplx);
+assert(errMod<tol && errArg<tol && errCplx<tol, 'tp_B4_rho.m mismatch vs 0.5*atan(LB45_135/LB0_90)');
 fprintf('OK — tp_B4_rho.m verified independently.\n');
 end
 function a = wrapToPi(a), a = mod(a+pi,2*pi)-pi; end

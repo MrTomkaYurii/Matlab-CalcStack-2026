@@ -1,7 +1,7 @@
 function R2 = tp_LB_CB_rho_from_result(R, dir)
 % TP_LB_CB_RHO_FROM_RESULT  Адаптер Крок A -> Крок B.
 %   Бере ГОТОВИЙ результат existing пайплайну (result.mat з
-%   core/algo/{orthogonal,generalized,XY}/tp_algo_*.m: R.data.(dir).(f_mn)
+%   august2026_copy/algo/{orthogonal,generalized,XY}/tp_algo_*.m: R.data.(dir).(f_mn)
 %   .cplx — 2D-карта комплексних значень f_mn, вже обчислена tp_fik_pair.m,
 %   НЕ перераховується тут) і рахує з неї 5 нових похідних елементів
 %   (Крок B: LB_0_90, LB_45_135, CB, rho, LB) як 2D-карти, у ТІЙ САМІЙ

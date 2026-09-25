@@ -1,7 +1,7 @@
 function [hw, loLag, hiLag] = tp_acf_hwhm(lag, curve)
 % TP_ACF_HWHM  Повна ширина на половині максимуму (FWHM/HWHM) 1D-перерізу
 %   ACF (пік у lag=0), лінійна інтерполяція між сусідніми відліками.
-%   Спільна для viz/viz_acf_cuts.m (малювання) і analysis/ (числове
+%   Спільна для visualization/viz_acf_cuts.m (малювання) і analysis/ (числове
 %   зведення) — щоб цифри завжди збігались з тим, що на графіку.
 %
 %   [hw, loLag, hiLag] = tp_acf_hwhm(lag, curve)

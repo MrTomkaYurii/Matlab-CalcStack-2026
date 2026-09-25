@@ -48,8 +48,8 @@ for r = 1:2
     % часто взагалі плаский (=шумовий поріг вимірювання, не сигнал) —
     % tp_piecewise_loglog_fit.m позначає це окремо.
     ax = subplot(2,2,(r-1)*2 + 2);
-    [fX, pX] = cutPSD(cx);
-    [fY, pY] = cutPSD(cy);
+    [fX, pX] = tp_cut_psd(cx);
+    [fY, pY] = tp_cut_psd(cy);
     loglog(ax, fX, pX, 'Color',S.lineRed,  'LineWidth',1.5, 'DisplayName','PSD along OX'); hold(ax,'on');
     loglog(ax, fY, pY, 'Color',S.lineBlue, 'LineWidth',1.5, 'DisplayName','PSD along OY');
     infoX = plotPiecewiseFit(ax, fX, pX, S.lineRed);
@@ -140,14 +140,4 @@ function plotSeg(ax, seg, color, style)
 xf = seg.lf;
 yf = polyval(seg.coef, xf);
 plot(ax, 10.^xf, 10.^yf, style, 'Color',color, 'LineWidth',1.2, 'HandleVisibility','off');
-end
-
-% ------------------------------------------------------------------------
-function [f, p] = cutPSD(cut)
-% PSD 1D-перерізу ACF = |FFT(ACF)| (Wiener–Khinchin); лишаємо додатні частоти.
-L = numel(cut);
-p = abs(fft(ifftshift(cut)));      % ACF центрований у середині -> ifftshift
-f = (0:L-1)/L;
-pos = 2:floor(L/2);                % пропускаємо DC для log-log
-f = f(pos);  p = p(pos) + eps;
 end

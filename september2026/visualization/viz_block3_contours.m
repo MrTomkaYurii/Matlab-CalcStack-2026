@@ -3,7 +3,7 @@ function viz_block3_contours(D, meta, ctx, CFG)
 %   фігурою (2x2): [ 2D контур модуля | 2D контур аргументу ;
 %                     3D контур модуля | 3D контур аргументу ].
 %   Та сама логіка ліній/підписів/згладжування, що й viz_sections.m (2D) і
-%   viz_contour3d.m (3D) — спільні функції з core/ (tp_contour_levels,
+%   viz_contour3d.m (3D) — спільні функції з august2026_copy/ (tp_contour_levels,
 %   tp_format_level), щоб виправлення діяли скрізь одразу.
 
 if isfield(CFG,'style'), S = viz_style(CFG.style); else, S = viz_style(); end

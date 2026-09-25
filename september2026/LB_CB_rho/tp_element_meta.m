@@ -1,0 +1,66 @@
+function [meta, ctx, D] = tp_element_meta(R2, dir, elem, CFG)
+% TP_ELEMENT_META  meta (підписи, осі, АКФ) і ctx (шлях/ім'я файлу) ОДНОГО з 5
+%   елементів Кроку B. ВИНЕСЕНО БЕЗ ЗМІН з tp_visualize_LB_CB_rho.m -- щоб
+%   рисунки (tp_visualize_LB_CB_rho) і статистика (tp_stats_LB_CB_rho) брали
+%   позначення, осі та АКФ з одного місця.
+%
+%   R2   : вихід tp_LB_CB_rho_from_result.m
+%   dir  : напрям/крок (R2.dirs)
+%   elem : 'LB_0_90' | 'LB_45_135' | 'CB' | 'rho' | 'LB'
+%   D    : R2.data.(dir).(elem)  (mod, arg, cplx)
+%   meta : x,y,xlabel,ylabel, elemTeX, modLabel, argLabel, titlePrefix, acfData
+%   ctx  : parts (шлях тек результату), name (ім'я елемента)
+
+% Короткий підпис "<зразок>/<приклад>" -- R2.sample у наших даних тягне за
+% собою ще й теку фазового вікна (напр. 'Серце\2\phase_01_[0-2.00pi]'):
+% повністю в заголовку і задовгий, і ламає TeX (цифри після '_' стають
+% підрядковими). Беремо лише перші 2 сегменти шляху.
+sampleParts = strsplit(R2.sample, {'\','/'});
+sampleShort = strjoin(sampleParts(1:min(2,numel(sampleParts))), '/');
+ax = R2.axes.(dir);  lb = R2.label.(dir);
+dirDisp = strrep(dir, '_', '\_');
+algoBase = strtok(R2.algorithm, '+');    % 'XY+LB_CB_rho' -> 'XY' (сама LB_CB_rho
+                                          % частина зайва в заголовку -- це й так
+                                          % єдине, що тут будується)
+baseParts = {R2.sample, R2.algorithm, dir};   % для ШЛЯХІВ лишаємо повним і сирим
+
+% Позначення -- ТОЧНО як у зелених формулах докс (перевірено по картинці
+% з документа): |...| для модуля всюди; arg[...] (квадратні дужки) для
+% LB_0,90 / LB_45,135 / CB, але arg(...) (круглі) для rho / LB.
+elemTeX = struct( ...
+    'LB_0_90',   'LB_{0,90}', ...
+    'LB_45_135', 'LB_{45,135}', ...
+    'CB',        'CB', ...
+    'rho',       '\rho', ...
+    'LB',        'LB');
+argBracket = struct( ...
+    'LB_0_90',   '[', ...
+    'LB_45_135', '[', ...
+    'CB',        '[', ...
+    'rho',       '(', ...
+    'LB',        '(');
+
+D = R2.data.(dir).(elem);
+
+tex = elemTeX.(elem);
+br  = argBracket.(elem);
+if br == '[', brC = ']'; else, brC = ')'; end   % відповідна закривна дужка
+argLabel = sprintf('arg%s%s%s [rad]', br, tex, brC);
+method = lower(CFG.acf.method);
+[amod, pmod, lxm, lym] = tp_acf_psd(D.mod, method);
+[aarg, parg, lxa, lya] = tp_acf_psd(D.arg, method);
+acfData = struct( ...
+    'method', method, ...
+    'mod', struct('acf',amod, 'psd',pmod, 'lagx',lxm, 'lagy',lym), ...
+    'arg', struct('acf',aarg, 'psd',parg, 'lagx',lxa, 'lagy',lya));
+
+meta = struct( ...
+    'x', ax.x, 'y', ax.y, 'xlabel', lb.x, 'ylabel', lb.y, ...
+    'elemTeX', tex, ...
+    'modLabel', sprintf('|%s|', tex), ...
+    'argLabel', argLabel, ...
+    'titlePrefix', sprintf('%s \\cdot %s \\cdot %s \\cdot %s', ...
+                           sampleShort, algoBase, dirDisp, tex), ...
+    'acfData', acfData);
+ctx = struct('parts', {[baseParts, {elem}]}, 'name', elem);
+end

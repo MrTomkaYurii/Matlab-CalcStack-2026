@@ -14,44 +14,18 @@ function tp_visualize_LB_CB_rho(R2, dir, CFG)
 %     (4B) 1D перерізи ACF + їх PSD (log-log)              — viz_acf_cuts.m
 %     (5)  вейвлет-скелетон + гістограма максимумів        — viz_skeleton.m
 %     (6)  смуговий аналіз концентрації біля рівнів         — viz_level_bands.m
-%     —    mean/std/skew/kurt (мод+арг) у текстовий файл    — viz_stats_table.m
-%   Усі функції — НЕЗМІНЕНІ копії з august2026\viz\.
+%   Статистика (текстові файли по теках елементів) -- ОКРЕМО:
+%   tp_stats_LB_CB_rho.m (CFG.stepB.stats).
 %
 %   R2  : вихід tp_LB_CB_rho_from_result.m (R2.elements = 5 нових імен)
 %   dir : той самий напрям/крок, що передавався туди
-%   CFG : як cfg_TwoPoint() (потрібні поля .viz, .out, .qc, .acf, .paths.saveRoot)
-
-% Короткий підпис "<зразок>/<приклад>" -- R2.sample у наших даних тягне за
-% собою ще й теку фазового вікна (напр. 'Серце\2\phase_01_[0-2.00pi]'):
-% повністю в заголовку і задовгий, і ламає TeX (цифри після '_' стають
-% підрядковими). Беремо лише перші 2 сегменти шляху.
-sampleParts = strsplit(R2.sample, {'\','/'});
-sampleShort = strjoin(sampleParts(1:min(2,numel(sampleParts))), '/');
-ax = R2.axes.(dir);  lb = R2.label.(dir);
-dirDisp = strrep(dir, '_', '\_');
-algoBase = strtok(R2.algorithm, '+');    % 'XY+LB_CB_rho' -> 'XY' (сама LB_CB_rho
-                                          % частина зайва в заголовку -- це й так
-                                          % єдине, що тут будується)
-baseParts = {R2.sample, R2.algorithm, dir};   % для ШЛЯХІВ лишаємо повним і сирим
-
-% Позначення -- ТОЧНО як у зелених формулах докс (перевірено по картинці
-% з документа): |...| для модуля всюди; arg[...] (квадратні дужки) для
-% LB_0,90 / LB_45,135 / CB, але arg(...) (круглі) для rho / LB.
-elemTeX = struct( ...
-    'LB_0_90',   'LB_{0,90}', ...
-    'LB_45_135', 'LB_{45,135}', ...
-    'CB',        'CB', ...
-    'rho',       '\rho', ...
-    'LB',        'LB');
-argBracket = struct( ...
-    'LB_0_90',   '[', ...
-    'LB_45_135', '[', ...
-    'CB',        '[', ...
-    'rho',       '(', ...
-    'LB',        '(');
+%   CFG : cfg_September() (поля .viz [перемикачі й параметри], .out, .qc,
+%         .acf, .wavelet, .multifractal, .style, .paths.saveRoot)
 
 for e = 1:numel(R2.elements)
     elem = R2.elements{e};
+    % CFG.viz.elements (cfg_September.m): які з п'яти малювати; немає поля => усі
+    if isfield(CFG.viz,'elements') && ~any(strcmp(CFG.viz.elements, elem)), continue; end
     D = R2.data.(dir).(elem);
 
     [ok, reason] = tp_validate(D.mod, CFG);
@@ -60,43 +34,31 @@ for e = 1:numel(R2.elements)
         continue;
     end
 
-    tex = elemTeX.(elem);
-    br  = argBracket.(elem);
-    if br == '[', brC = ']'; else, brC = ')'; end   % відповідна закривна дужка
-    argLabel = sprintf('arg%s%s%s [rad]', br, tex, brC);
-    method = lower(CFG.acf.method);
-    [amod, pmod, lxm, lym] = tp_acf_psd(D.mod, method);
-    [aarg, parg, lxa, lya] = tp_acf_psd(D.arg, method);
-    acfData = struct( ...
-        'method', method, ...
-        'mod', struct('acf',amod, 'psd',pmod, 'lagx',lxm, 'lagy',lym), ...
-        'arg', struct('acf',aarg, 'psd',parg, 'lagx',lxa, 'lagy',lya));
-
-    meta = struct( ...
-        'x', ax.x, 'y', ax.y, 'xlabel', lb.x, 'ylabel', lb.y, ...
-        'elemTeX', tex, ...
-        'modLabel', sprintf('|%s|', tex), ...
-        'argLabel', argLabel, ...
-        'titlePrefix', sprintf('%s \\cdot %s \\cdot %s \\cdot %s', ...
-                               sampleShort, algoBase, dirDisp, tex), ...
-        'acfData', acfData);
-    ctx = struct('parts', {[baseParts, {elem}]}, 'name', elem);
-
+    [meta, ctx] = tp_element_meta(R2, dir, elem, CFG);   % підписи, осі, АКФ, шлях
     tag = sprintf('%s/%s/%s', R2.algorithm, dir, elem);
-    runViz(@viz_maps_hist,               D, meta, ctx, CFG, tag, 'maps_hist');
-    runViz(@viz_block1_summary,          D, meta, ctx, CFG, tag, 'block1_summary');
-    runViz(@viz_sections,                D, meta, ctx, CFG, tag, 'surf_contour');
-    runViz(@viz_contour3d,               D, meta, ctx, CFG, tag, 'contour3');
-    runViz(@viz_block3_contours,         D, meta, ctx, CFG, tag, 'block3_contours');
-    runViz(@viz_multifractal,            D, meta, ctx, CFG, tag, 'multifractal');
-    runViz(@viz_multifractal_dimensions, D, meta, ctx, CFG, tag, 'multifractal_dims');
-    runViz(@viz_wavelet,                 D, meta, ctx, CFG, tag, 'wavelet');
-    runViz(@viz_acf_psd,                 D, meta, ctx, CFG, tag, 'acf_psd');
-    runViz(@viz_acf_cuts,                D, meta, ctx, CFG, tag, 'acf_cuts');
-    runViz(@viz_skeleton,                D, meta, ctx, CFG, tag, 'skeleton');
-    runViz(@viz_level_bands,             D, meta, ctx, CFG, tag, 'level_bands');
-    runViz(@viz_stats_table,             D, meta, ctx, CFG, tag, 'stats_table');
+
+    % Перемикачі CFG.viz.<ім'я> (cfg_September.m, розділ 6): відсутній => увімкнено.
+    if isOn(CFG,'mapsHist'),      runViz(@viz_maps_hist,               D, meta, ctx, CFG, tag, 'maps_hist'); end
+    if isOn(CFG,'blockSummary'),  runViz(@viz_block1_summary,          D, meta, ctx, CFG, tag, 'block1_summary'); end
+    if isOn(CFG,'surfContour'),   runViz(@viz_sections,                D, meta, ctx, CFG, tag, 'surf_contour'); end
+    if isOn(CFG,'contour3'),      runViz(@viz_contour3d,               D, meta, ctx, CFG, tag, 'contour3'); end
+    if isOn(CFG,'blockContours'), runViz(@viz_block3_contours,         D, meta, ctx, CFG, tag, 'block3_contours'); end
+    if isOn(CFG,'multifractal')
+        runViz(@viz_multifractal,            D, meta, ctx, CFG, tag, 'multifractal');
+        runViz(@viz_multifractal_dimensions, D, meta, ctx, CFG, tag, 'multifractal_dims');
+    end
+    if isOn(CFG,'wavelet'),       runViz(@viz_wavelet,                 D, meta, ctx, CFG, tag, 'wavelet'); end
+    if isOn(CFG,'acfPsd'),        runViz(@viz_acf_psd,                 D, meta, ctx, CFG, tag, 'acf_psd'); end
+    if isOn(CFG,'acfCuts'),       runViz(@viz_acf_cuts,                D, meta, ctx, CFG, tag, 'acf_cuts'); end
+    if isOn(CFG,'skeleton'),      runViz(@viz_skeleton,                D, meta, ctx, CFG, tag, 'skeleton'); end
+    if isOn(CFG,'levelBands'),    runViz(@viz_level_bands,             D, meta, ctx, CFG, tag, 'level_bands'); end
 end
+end
+
+% ------------------------------------------------------------------------
+function tf = isOn(CFG, name)
+% Перемикач подання: CFG.viz.<name>; якщо поля немає -- увімкнено.
+tf = ~isfield(CFG.viz, name) || logical(CFG.viz.(name));
 end
 
 % ------------------------------------------------------------------------

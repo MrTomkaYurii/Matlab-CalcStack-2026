@@ -13,8 +13,9 @@ ref = log(f34./f43);
 
 errMod = max(abs(OUT.mod - abs(ref)));
 errArg = max(abs(wrapToPi(OUT.arg - angle(ref))));
-fprintf('LB_0_90 : |.| err=%.3e   arg err=%.3e\n', errMod, errArg);
-assert(errMod<tol && errArg<tol, 'tp_B1_LB_0_90.m mismatch vs log(f34/f43)');
+errCplx = max(abs(OUT.cplx - ref));   % LB = Re + i*Im напряму (не лише mod/arg)
+fprintf('LB_0_90 : |.| err=%.3e   arg err=%.3e   cplx err=%.3e\n', errMod, errArg, errCplx);
+assert(errMod<tol && errArg<tol && errCplx<tol, 'tp_B1_LB_0_90.m mismatch vs log(f34/f43)');
 fprintf('OK — tp_B1_LB_0_90.m verified independently.\n');
 end
 function a = wrapToPi(a), a = mod(a+pi,2*pi)-pi; end

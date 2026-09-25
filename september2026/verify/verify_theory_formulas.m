@@ -136,6 +136,23 @@ if err < tol
 else
     fprintf('  -> hypothesis REJECTED, needs another candidate.\n');
 end
+
+% --- Формула, реалізована в коді (tp_B4_rho.m): arg(rho) = atan2(L, 2T) --------
+argCode = atan2(num, 2*den);          % L = num = 8Q,  T = den = 4P  =>  atan2(8Q, 8P)
+errCode = max(abs(wrapToPi(argCode - argRef)));
+fprintf('  code formula atan2(L, 2T):  max abs err vs arg(0.5*atan(X+iY)) = %.3e\n', errCode);
+assert(errCode < tol, 'arg(rho) = atan2(L,2T) does not match native arg');
+
+% --- Негативний контроль: Word "як написано" ---------------------------------
+% Word: arg(rho) = atan4( ln[..] / atan2(..) ) = "atan від L/T". Якщо прочитати
+% "atan4" як звичайний двоаргументний atan2 БЕЗ множника 2 біля T:
+argWordLiteral = atan2(num, den);     % = atan2(L, T)  -- бракує 2
+errLit = max(abs(wrapToPi(argWordLiteral - argRef)));
+fprintf('  Word literal atan2(L, T) [no factor 2]:  max abs err = %.3e  (must be LARGE)\n', errLit);
+assert(errLit > 0.1, ['expected the literal Word reading atan2(L,T) to DISAGREE with ' ...
+                      'arg(rho); if this fails the reasoning in MATH_DERIVATIONS md §6.5 is wrong']);
+fprintf('  -> CONFIRMED: Word arg(rho) box without the factor 2 gives a WRONG angle;\n');
+fprintf('     the correct form is atan2(Q,P) = atan2(L, 2T)  (see MATH_DERIVATIONS_LB_CB_rho.md, 6.5).\n');
 end
 
 % ------------------------------------------------------------------

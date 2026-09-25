@@ -14,8 +14,9 @@ ref = sqrt(LB0_90.^2 + LB45_135.^2);
 
 errMod = max(abs(OUT.mod - abs(ref)));
 errArg = max(abs(wrapToPi(OUT.arg - angle(ref))));
-fprintf('LB : |.| err=%.3e   arg err=%.3e\n', errMod, errArg);
-assert(errMod<tol && errArg<tol, 'tp_B5_LB_total.m mismatch vs sqrt(LB0_90^2+LB45_135^2)');
+errCplx = max(abs(OUT.cplx - ref));   % LB = sqrt(C+iD) напряму (не лише mod/arg)
+fprintf('LB : |.| err=%.3e   arg err=%.3e   cplx err=%.3e\n', errMod, errArg, errCplx);
+assert(errMod<tol && errArg<tol && errCplx<tol, 'tp_B5_LB_total.m mismatch vs sqrt(LB0_90^2+LB45_135^2)');
 fprintf('OK — tp_B5_LB_total.m verified independently.\n');
 end
 function a = wrapToPi(a), a = mod(a+pi,2*pi)-pi; end

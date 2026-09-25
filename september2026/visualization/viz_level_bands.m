@@ -21,9 +21,6 @@ function viz_level_bands(D, meta, ctx, CFG)
 %   саме й наскільки щільно значення концентруються біля обраних рівнів.
 
 if isfield(CFG,'style'), S = viz_style(CFG.style); else, S = viz_style(); end
-NL0 = 8;    if isfield(CFG.viz,'bandLevels'),   NL0 = CFG.viz.bandLevels;   end
-pct = 0.02; if isfield(CFG.viz,'bandWidthPct'), pct = CFG.viz.bandWidthPct; end
-
 quants = { {D.mod, meta.modLabel, 'mod'}, {D.arg, meta.argLabel, 'arg'} };
 
 % Сірий+peak-колір фіксовані, не залежать від CFG.viz.colormaps (jet/gray)
@@ -31,30 +28,20 @@ quants = { {D.mod, meta.modLabel, 'mod'}, {D.arg, meta.argLabel, 'arg'} };
 % colormap (раніше давало 2 однакові файли з різними іменами).
 for q = 1:numel(quants)
     Z = quants{q}{1}; qlab = quants{q}{2}; qtag = quants{q}{3};
-    buildFigure(Z, qlab, qtag, meta, ctx, CFG, S, NL0, pct);
+    buildFigure(Z, qlab, qtag, meta, ctx, CFG, S);
 end
 end
 
 % ------------------------------------------------------------------------
-function buildFigure(Z, qlab, qtag, meta, ctx, CFG, S, NL0, pct)
-lo = min(Z(:),[],'omitnan'); hi = max(Z(:),[],'omitnan');
-if ~(isfinite(lo) && isfinite(hi)) || hi <= lo
+function buildFigure(Z, qlab, qtag, meta, ctx, CFG, S)
+% Рівні, рівень-мода, ширина смуги і лічильники -- спільний розрахунок із
+% статистикою (tp_level_bands_calc.m, перенесено сюди без змін логіки).
+LBc = tp_level_bands_calc(Z, CFG);
+if ~LBc.valid
     return;   % вироджений розподіл — нічого малювати
 end
-levels0 = linspace(lo, hi, NL0);
-
-% --- рівень-мода: центр найбільш заповненого біна гістограми --------------
-v = Z(isfinite(Z));
-[cnt, edges] = histcounts(v, max(20, CFG.viz.histBins));
-[~, ipk] = max(cnt);
-peakLevel = 0.5*(edges(ipk) + edges(ipk+1));
-
-levels = sort([levels0, peakLevel]);
-peakIdx = find(levels == peakLevel, 1);
-NL = numel(levels);
-
-halfW  = 0.5 * pct * (hi - lo);
-nTotal = nnz(isfinite(Z));
+lo = LBc.lo; hi = LBc.hi; levels = LBc.levels; peakIdx = LBc.peakIdx;
+NL = LBc.NL; halfW = LBc.halfW; nTotal = LBc.nTotal;
 
 grayCol = [0.45 0.45 0.45];       % ОДИН сірий колір -- маркери й стовпці гістограми
 peakCol = [0.80 0.15 0.15];       % лише рівень-мода виділений
@@ -78,6 +65,14 @@ Wfig = marginL + cols*colW + (cols-1)*gapX + marginR;
 Hfig = marginT + groups*groupH + (groups-1)*gapBetween + marginB;
 fig = figure('Color','w','Visible','off','Position',[40 40 Wfig Hfig]);
 S.light(fig);
+% УВАГА (причина "плаваючої" вёрстки): у звичайному вікні MATLAB (не -batch) висота
+% фігури при створенні ОБМЕЖУЄТЬСЯ висотою екрана (тут задумано ~2200 px, а екран ~864),
+% а при збереженні повертається до заданої. Панелі в ПІКСЕЛЯХ (Units='pixels') тоді
+% розтягувались по вертикалі в Hfig/Hекрана разів: гістограми ставали в ~2.7 раза вищими,
+% проміжки роздувались, верхні ряди йшли за край. Тому ВСЯ розкладка задається в
+% НОРМАЛІЗОВАНИХ одиницях (частка фігури, розраховується з розмірів у пікселях) --
+% вона не залежить від того, якого розміру вікно фігури в даний момент.
+nrm = @(p) p ./ [Wfig Hfig Wfig Hfig];   % [x y w h] у пікселях задуму -> частки фігури
 
 for j = 1:NL
     lvl  = levels(j);
@@ -99,7 +94,7 @@ for j = 1:NL
     yHistBottom = Hfig - yHistTop - histH;
 
     % --- панель точок: де саме на зображенні лежать пікселі в смузі -----
-    axM = axes('Parent',fig, 'Units','pixels', 'Position',[x0 yMaskBottom colW colW]);
+    axM = axes('Parent',fig, 'Units','normalized', 'Position',nrm([x0 yMaskBottom colW colW]));
     xr = [min(meta.x) max(meta.x)]; yr = [min(meta.y) max(meta.y)];
     xlim(axM, xr); ylim(axM, yr); axis(axM,'image');   % 1:1, панель уже квадратна
     set(axM, 'YDir','normal', 'XTick',round(xr), 'YTick',round(yr), 'XTickLabelRotation',0);
@@ -126,7 +121,7 @@ for j = 1:NL
     S.apply(axM);
 
     % --- панель гістограми: наскільки щільно концентруються значення ----
-    axH = axes('Parent',fig, 'Units','pixels', 'Position',[x0 yHistBottom colW histH]);
+    axH = axes('Parent',fig, 'Units','normalized', 'Position',nrm([x0 yHistBottom colW histH]));
     if nPx > 0
         vv = Z(mask);
         histogram(axH, vv, max(8,round(sqrt(nPx))), 'FaceColor',col_, ...
@@ -153,7 +148,7 @@ end
 % sgtitle рахує висоту неправильно й затирає перший ряд панелей. Замість
 % цього -- окрема невидима вісь на всю фігуру з текстом у ФІКСОВАНІЙ,
 % контрольованій позиції (у межах marginT).
-axTitle = axes('Parent',fig, 'Units','pixels', 'Position',[0 0 Wfig Hfig], 'Visible','off');
+axTitle = axes('Parent',fig, 'Units','normalized', 'Position',[0 0 1 1], 'Visible','off');
 xlim(axTitle,[0 Wfig]); ylim(axTitle,[0 Hfig]);
 text(axTitle, Wfig/2, Hfig - marginT*0.45, ...
      sprintf('%s  \\cdot  level-band concentration  (%s)  [range %.3g..%.3g, band=\\pm%.2g]', ...
@@ -161,5 +156,7 @@ text(axTitle, Wfig/2, Hfig - marginT*0.45, ...
      'FontSize',S.titleSize,'FontWeight','bold','Interpreter','tex','Color',S.ink, ...
      'HorizontalAlignment','center','VerticalAlignment','middle');
 uistack(axTitle,'bottom');   % під панелями, щоб не перехоплювала клік/рендер-порядок
+set(fig, 'Position', [40 40 Wfig Hfig]);   % на випадок, якщо вікно було урізане під екран
+drawnow;
 tp_save_figure(fig, CFG, ctx.parts, sprintf('%s_level_bands_%s', ctx.name, qtag));
 end
