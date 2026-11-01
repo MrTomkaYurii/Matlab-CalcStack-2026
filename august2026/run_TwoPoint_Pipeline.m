@@ -7,33 +7,26 @@ function run_TwoPoint_Pipeline(cfgOverride)
 %   Для кожного зразка й кожного прикладу:
 %       1) завантажує (або синтезує) поляризаційні зображення (ПОВНІ,
 %          без жодної фазової маски),
-%       2) рахує УСІ увімкнені алгоритми (CFG.algorithms) РІВНО ОДИН РАЗ
-%          на цьому повному кадрі (16 елементів f_ik, усі напрями/кроки),
-%       3) якщо CFG.phase.enable — для КОЖНОГО з CFG.phase.numWindows
-%          фазових вікон k ріже КОЖЕН елемент f_ik ОКРЕМО за ЙОГО
-%          ВЛАСНИМ arg(f_ik) (tp_phase_window_element, [0, U_k], стягується до 0°) і
-%          зберігає в phase_XX/algo/.../result.mat — так само, як
-%          зберігав би немасковану версію, якби фазові вікна були вимкнені.
+%       2) якщо CFG.phase.enable і CFG.phase.target = 'field' (типово) —
+%          для КОЖНОГО фазового вікна k (або лише CFG.phase.only) відбирає
+%          ПОЛЕ: tp_phase_window обнуляє (NaN) пікселі, де phi_xy^(w) =
+%          arg Ey^(w) - arg Ex^(w) поза [0, U_k], окремо для кожного
+%          освітлення w (стаття, рівн. 20, п. 6–7), і ВЖЕ НА ЦЬОМУ полі
+%          рахує всі алгоритми (16 елементів f_ik, усі напрями/кроки),
+%       3) зберігає phase_XX/algo/.../result.mat.
+%          CFG.phase.target = 'element' — стара (17.09) схема: f_ik рахуються
+%          один раз, а вікно ріже готовий f_ik за власним arg (не відповідає
+%          статті, лишена лише для відтворення старих результатів).
 %       4) будує всі увімкнені подання (maps/sections/wavelet/...) і
 %          текстову таблицю статистичних моментів для КОЖНОГО вікна.
 %   Щойно зразок (усі приклади) дорахований — одразу збирає його дані для
 %   Горського (tp_collect_sample_for_horsky, Етап 3 ТЗ), без ручного
 %   запуску run_TwoPoint_CollectForHorsky.
 %
-%   Чому фазова маска тепер ПІСЛЯ розрахунку f_ik, а не ДО (як робив
-%   старий tp_phase_window.m на сирих Ex,Ey ОДНОГО освітлення refPol):
-%   критерій "arg(Ey)-arg(Ex) освітлення inRC" алгебраїчно взагалі не
-%   входить у формулу f_i1/f_i2/f_i3 (tp_fik_pair.m розд.4 — лише f_i4
-%   через ARC,BRC) — тобто для 12 із 16 елементів стара маска була
-%   стороннім критерієм, ніяк не пов'язаним з величиною, яку рахували
-%   (підтверджено емпірично: стат. моменти між вікнами майже не мінялись).
-%   Нова версія (tp_phase_window_element.m) різатиме КОЖЕН елемент за
-%   ЙОГО ВЛАСНИМ аргументом — критерій за конструкцією прив'язаний до
-%   величини. Побічний ефект: 'orthogonal'/'polar'/'generalized' тепер
-%   рахуються РІВНО ОДИН РАЗ на зразок (раніше — по разу на кожне з
-%   CFG.phase.numWindows вікон із тим самим немаскованим входом) — і
-%   швидше, і саме тому й правильніше для 'XY' (сума OX+OY бралась би з
-%   диска, уже провіконеного ЧУЖИМ по суті критерієм для XY).
+%   Чому маска на ПОЛІ, а не на готовому f_ik: у статті фазова селекція —
+%   відбір комплексно-амплітудного поля за phi_xy, а двоточкове сканування
+%   виконується «для каждой частичной фазовой выборки» поля. Обрізання
+%   готового f_ik за власним arg штучно звужує розподіл Arg до ширини вікна.
 %
 %   Усім керує CFG (config/cfg_TwoPoint.m) — розширюйте саме там.
 
@@ -54,9 +47,21 @@ fprintf('source = %s | crop = %d x %d | algorithms = {%s}\n', ...
         CFG.source, CFG.crop.size, CFG.crop.size, strjoin(CFG.algorithms, ', '));
 
 phaseOn = isfield(CFG,'phase') && isfield(CFG.phase,'enable') && CFG.phase.enable;
+phaseTarget = 'field';
+if phaseOn && isfield(CFG.phase,'target') && ~isempty(CFG.phase.target), phaseTarget = lower(CFG.phase.target); end
+phaseList = [];
 if phaseOn
-    fprintf('phase windows = %d, per-element arg(f_ik) в [0, U_k], стягується до 0° (U_k: [0,2pi] .. [0,%.3gpi])\n', ...
-            CFG.phase.numWindows, CFG.phase.upperMin/pi);
+    phaseList = 1:CFG.phase.numWindows;
+    if isfield(CFG.phase,'only') && ~isempty(CFG.phase.only), phaseList = CFG.phase.only(:).'; end
+    if strcmp(phaseTarget,'field')
+        maskMode = 'perIllumination';
+        if isfield(CFG.phase,'maskMode') && ~isempty(CFG.phase.maskMode), maskMode = CFG.phase.maskMode; end
+        fprintf('phase windows {%s} з %d: маска на ПОЛІ (%s), phi_xy в [0, U_k] (U_k: [0,2pi] .. [0,%.3gpi])\n', ...
+                num2str(phaseList), CFG.phase.numWindows, maskMode, CFG.phase.upperMin/pi);
+    else
+        fprintf('phase windows {%s} з %d: per-element arg(f_ik) (стара схема 17.09)\n', ...
+                num2str(phaseList), CFG.phase.numWindows);
+    end
 end
 
 % Для 'real' і 'mat' обробляються ВСІ підтеки з CFG.paths.examples на кожен
@@ -109,12 +114,8 @@ for s = 1:numel(CFG.samples)
             fclose(fid);
         end
 
-        % --- крок 2: усі алгоритми РІВНО ОДИН РАЗ на ПОВНОМУ (немаскованому)
-        %     кадрі — фазова маска (якщо є) накладається пізніше, per-element,
-        %     на вже ГОТОВИЙ f_ik (computeAlgorithmsOnce нижче).
-        cache = computeAlgorithmsOnce(IMG, CFG, sampleOut, sampleLabel);
-
         if ~phaseOn
+            cache = computeAlgorithmsOnce(IMG, CFG, sampleOut, sampleLabel);
             ctx = struct('sample', sampleName, 'example', example, 'phase_index', NaN, 'phase_deg', NaN);
             rowsCell = saveWindowedResults(cache, CFG, sampleOut, sampleLabel, ctx);
             appendAnalytics(CFG, rowsCell, sampleLabel);
@@ -122,7 +123,36 @@ for s = 1:numel(CFG.samples)
         end
 
         U = tp_phase_window_bounds(CFG);
-        for k = 1:CFG.phase.numWindows
+
+        if strcmp(phaseTarget,'field')
+            % --- крок 2: для кожного вікна — відбір ПОЛЯ, потім усі алгоритми на ньому
+            for k = phaseList
+                phaseFolder = tp_phase_folder_name(CFG, k);
+                phaseOut    = fullfile(sampleOut, phaseFolder);
+                phaseLabel  = sprintf('%s / %s', sampleLabel, phaseFolder);
+                outDir = fullfile(CFG.paths.saveRoot, phaseOut);
+                if ~exist(outDir,'dir'); mkdir(outDir); end
+
+                [IMGk, info] = tp_phase_window(IMG, CFG, k);
+                writeFieldPhaseInfo(fullfile(outDir,'phase_info.txt'), CFG, info);
+                kf = cell2mat(struct2cell(info.keptFrac));
+                fprintf('  %s : поле, %s, збережено пікселів %.1f%%..%.1f%%\n', ...
+                        phaseFolder, info.mode, 100*min(kf), 100*max(kf));
+
+                cacheK = computeAlgorithmsOnce(IMGk, CFG, phaseOut, phaseLabel);
+                ctx = struct('sample', sampleName, 'example', example, ...
+                             'phase_index', k, 'phase_deg', round(U(k)/pi*180), 'elementWindow', false);
+                rowsCell = saveWindowedResults(cacheK, CFG, phaseOut, phaseLabel, ctx);
+                appendAnalytics(CFG, rowsCell, phaseLabel);
+            end
+            tp_phase_trend(CFG, sampleName, example);
+            continue;
+        end
+
+        % --- стара схема (target='element'): усі алгоритми ОДИН раз на
+        %     повному кадрі, вікно ріже вже ГОТОВИЙ f_ik за власним arg.
+        cache = computeAlgorithmsOnce(IMG, CFG, sampleOut, sampleLabel);
+        for k = phaseList
             % Межа вікна ПРЯМО в назві теки (частка pi, 2 знаки — щоб не було
             % "соті" на весь екран), і номер попереду — для сортування:
             %   phase_01_[0-2.00pi] ... phase_08_[0-0.25pi]
@@ -259,7 +289,8 @@ function [rowsCell, keptFracByAlgo] = saveWindowedResults(cache, CFG, sampleOut,
 rowsCell = {};
 keptFracByAlgo = struct('orthogonal', [], 'polar', [], 'generalized', [], 'XY', []);
 phaseOn = isfield(CFG,'phase') && isfield(CFG.phase,'enable') && CFG.phase.enable ...
-          && isfield(ctx,'phase_index') && ~isnan(ctx.phase_index);
+          && isfield(ctx,'phase_index') && ~isnan(ctx.phase_index) ...
+          && ~(isfield(ctx,'elementWindow') && ~ctx.elementWindow);   % поле вже відібране -> f_ik не різати
 k = ctx.phase_index;
 
 % ---- orthogonal ----
@@ -378,6 +409,21 @@ try
 catch ME
     fprintf(2, '    [analytics fail] %s: %s\n', label, ME.message);
 end
+end
+
+% ------------------------------------------------------------------------
+function writeFieldPhaseInfo(fname, CFG, info)
+% Супровід фазового вікна для схеми «маска на полі» (tp_phase_window.m).
+fid = fopen(fname, 'w', 'n', 'UTF-8');
+fprintf(fid, 'Фазова вибірка %d з %d\n', info.index, CFG.phase.numWindows);
+fprintf(fid, 'Критерій: phi_xy = arg Ey - arg Ex ПОЛЯ, до розрахунку f_ik (tp_phase_window.m), режим %s\n', info.mode);
+fprintf(fid, 'Вікно: [%.6f, %.6f] рад  ([%.4f, %.4f] * pi)\n', info.lower, info.upper, info.lower/pi, info.upper/pi);
+fprintf(fid, '\nЗбережено пікселів поля (keptFrac), по освітленню:\n');
+pols = fieldnames(info.keptFrac);
+for p = 1:numel(pols)
+    fprintf(fid, '  %-7s : %.1f%%\n', pols{p}, 100*info.keptFrac.(pols{p}));
+end
+fclose(fid);
 end
 
 % ------------------------------------------------------------------------

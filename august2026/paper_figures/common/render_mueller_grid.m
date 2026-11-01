@@ -43,7 +43,7 @@ if isfield(FIG.color, 'modMax') && ~isempty(FIG.color.modMax) && isfinite(FIG.co
     modClim(2) = min(modClim(2), FIG.color.modMax);
 end
 argClim = FIG.color.argClim;
-if isempty(poolArg); argClim = [-pi pi]; end
+if isempty(poolArg); argClim = FIG.color.argClim; end
 
 % ---- геометрія (мм, абстрактна) ----
 Wa      = FIG.geom.aspectW;
@@ -150,7 +150,7 @@ for b = 1:W
                 lab(gx + grpW/2, cbY + cbH + 2.2, tern(isNorm,'|f_{ik} / f_{11}|','|f_{ik}|  (a.u.)'), ...
                     'VerticalAlignment','middle', 'FontSize',fs-1);
             else
-                set(cbAx, 'XTick',[-pi 0 pi], 'XTickLabel',{'-\pi','0','\pi'});
+                set(cbAx, 'XTick',argTicks(cl), 'XTickLabel',argTickLbl(cl));
                 lab(gx + grpW/2, cbY + cbH + 2.2, 'arg(f_{ik})  (rad)', 'VerticalAlignment','middle', 'FontSize',fs-1);
             end
         end
@@ -225,3 +225,13 @@ labs = { tern(abs(lo) < thr, '0', numlbl(lo)), tern(abs(hi) < thr, '0', numlbl(h
 end
 
 function out = tern(c,a,b); if c; out = a; else; out = b; end; end
+
+% ------------------------------------------------------------------------
+function t = argTicks(cl)
+% мітки шкали аргументу: 0, pi, 2pi  або  -pi, 0, pi
+t = [cl(1) mean(cl) cl(2)];
+end
+
+function l = argTickLbl(cl)
+if cl(1) >= 0, l = {'0','\pi','2\pi'}; else, l = {'-\pi','0','\pi'}; end
+end

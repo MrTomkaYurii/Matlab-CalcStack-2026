@@ -201,8 +201,8 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
     FIG.color.modes = {'color', 'gray'};
     FIG.color.maps.color = struct('mod','jet',  'arg','jet');    % jet (школа Ушенка)
     FIG.color.maps.gray  = struct('mod','gray', 'arg','gray');   % ЧБ (друк / colour-safe)
-    %   У 'gray' аргумент — лінійний -pi(чорний)..+pi(білий); розрив на ±pi неминучий.
-    FIG.color.argClim    = [-pi pi];   % фіксовані межі colorbar-а аргументу
+    %   У 'gray' аргумент — лінійний від argClim(1) (чорний) до argClim(2) (білий).
+    FIG.color.argClim    = [0 2*pi];   % межі colorbar-а аргументу: [0 2*pi] (аргумент зводиться mod 2pi) або [-pi pi]
     FIG.color.modClipPct = 2.5;        % відсікає довгий хвіст рідкісних викидів (верхні 2.5%), фокусуючи шкалу на значущому діапазоні (OX до ~3)
     FIG.color.modMax     = [];         % опційно: жорстка верхня межа модуля (напр. 3.0), якщо задана
     FIG.color.nan        = [1 1 1];    % колір NaN-пікселів (край без пари / поза вікном)
@@ -277,7 +277,7 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
         %   FIG.variants (тег у імені) — інший алгоритм не затирає попередній.
         %   Набори: moments/acf/psd/skeleton/wavelet/multifractal/mueller.
         %   Обсяг = FIG.build (секція 2).
-        FIG.stats.excessKurt = false;  % false: звичайний ексцес (норма 3); true: надлишковий (норма 0)
+        FIG.stats.excessKurt = true;   % true: надлишковий ексцес Z4 = kurtosis - 3 (норма 0); false: звичайний (норма 3)
         FIG.stats.docx       = true;   % будувати .docx (потребує MATLAB Report Generator)
 
 end

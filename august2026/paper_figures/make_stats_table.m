@@ -166,7 +166,7 @@ for p = 1:numel(keys)
                                 else
                                     src = P.histSrc;
                                 end
-                                z = stats_moments(src, FIG.stats.excessKurt);
+                                z = stats_moments(src, FIG.stats.excessKurt, strcmp(sp.kind,'raw') && strcmp(comp{1},'arg'));
                                 N = numel(src);  Lc = P.Lcorr;  mf = nan(1,7);
                                 rows(end+1,:) = { base, sp.fig, [elems{1} '-' elems{2}], v.tag, sName, ex, ...
                                     FIG.phase(w).label, elems{e}, compLbl, ...
@@ -208,7 +208,7 @@ for si = 1:numel(C.samples)
                         for comp = {'mod','arg'}
                             M = D.data.(sprintf('f%d%d',i,k)).(comp{1});
                             src = M(isfinite(M));
-                            z = stats_moments(src, FIG.stats.excessKurt);
+                            z = stats_moments(src, FIG.stats.excessKurt, strcmp(comp{1},'arg'));
                             rows(end+1,:) = { base, 'Fig7', 'mueller', v.tag, sName, ex, ...
                                 FIG.phase(w).label, sprintf('f%d%d',i,k), ...
                                 tern(strcmp(comp{1},'mod'),'|f|','arg'), numel(src), ...

@@ -219,7 +219,7 @@ for r = 1:4
                 set(cbAx, 'YTick',[], 'XLim',cl, 'Box','on', 'LineWidth',FIG.line.axis, ...
                         'TickDir','out', 'FontSize',fs, 'XColor','k', 'YColor','k', 'XAxisLocation','bottom');
                 if strcmp(kind,'raw') && ~isMod
-                    set(cbAx, 'XTick',[-pi 0 pi], 'XTickLabel',{'-\pi','0','\pi'});
+                    set(cbAx, 'XTick',argTicks(cl), 'XTickLabel',argTickLbl(cl));
                 else
                     set(cbAx, 'XTick',cl, 'XTickLabel', endlbl(cl(1), cl(2)));
                 end
@@ -319,7 +319,7 @@ for r = 1:4
                     'YTickLabel',{'0', explbl(ymax/1.1)}, 'TickLabelInterpreter','tex', ...
                     'YTickLabelRotation', 90, 'XColor','k', 'YColor','k');
             if strcmp(kind,'raw') && ~isMod
-                set(ax, 'XTick',[-pi 0 pi], 'XTickLabel',{'-\pi','0','\pi'});
+                set(ax, 'XTick',argTicks(cl), 'XTickLabel',argTickLbl(cl));
             else
                 set(ax, 'XTick',[edg(1) edg(end)], 'XTickLabel', endlbl(edg(1), edg(end)));
             end
@@ -433,4 +433,14 @@ end
 
 function out = tern(cond, a, b)
 if cond, out = a; else, out = b; end
+end
+
+% ------------------------------------------------------------------------
+function t = argTicks(cl)
+% мітки шкали аргументу: 0, pi, 2pi  або  -pi, 0, pi
+t = [cl(1) mean(cl) cl(2)];
+end
+
+function l = argTickLbl(cl)
+if cl(1) >= 0, l = {'0','\pi','2\pi'}; else, l = {'-\pi','0','\pi'}; end
 end

@@ -56,4 +56,12 @@ D.file = rf;
 % лише для рисунків, сирий result.mat не чіпається. Деталі — tp_paper_normalize.m
 key = sprintf('%s|%s|%s', sampleName, exampleName, variant.tag);
 D = tp_paper_normalize(D, key, FIG);
+
+% аргумент на гілці [0, 2pi), якщо так задано межі colorbar-а (FIG.color.argClim = [0 2*pi])
+if isfield(FIG,'color') && isfield(FIG.color,'argClim') && FIG.color.argClim(1) >= 0
+    el = fieldnames(D.data);
+    for e = 1:numel(el)
+        D.data.(el{e}).arg = mod(D.data.(el{e}).arg, 2*pi);
+    end
+end
 end
