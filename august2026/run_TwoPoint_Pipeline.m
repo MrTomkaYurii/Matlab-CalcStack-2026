@@ -258,7 +258,7 @@ if any(strcmpi(CFG.algorithms,'generalized'))
         step = CFG.gen.steps(si);
         try
             t = tic;
-            R = tp_algo_generalized(IMG, CFG, sampleOut, step);
+            R = tp_algo_generalized_run(IMG, CFG, sampleOut, step);
             fprintf('    [generalized step_%d] computed in %.1f s (повний кадр)\n', step, toc(t));
             cache.gen.(sprintf('step_%d', step)) = R;
         catch ME

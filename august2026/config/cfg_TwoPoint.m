@@ -165,7 +165,12 @@ CFG.elements = els;
     % (max(posStep,2)); решта кроків використовують posStep як задано вище.
     CFG.gen.maxDist  = [];       % макс. відстань (px); [] => N-1 (повний діапазон)
     CFG.gen.excludeZero = true;  % відкинути нульову відстань (0,0)
-    CFG.gen.parallel    = true;  % паралельний розрахунок (parfor, усі ядра) — для 5800H
+    CFG.gen.parallel    = true;  % паралельний розрахунок (parfor, усі ядра) — для 5800H (лише engine='loop')
+    % Реалізація (tp_algo_generalized_run.m): числа однакові, різниця лише в швидкості.
+    CFG.gen.engine      = 'batch';   % 'batch' — зсуви пачками (GPU/CPU); 'loop' — по одному, parfor
+    CFG.gen.useGPU      = 'auto';    % 'auto' — GPU NVIDIA, якщо MATLAB його бачить; true | false
+    CFG.gen.precision   = 'auto';    % 'auto' — single на GPU, double на CPU; або 'single' | 'double'
+    CFG.gen.batchShifts = 64;        % зсувів Δy за раз; на GPU 12 ГБ можна 128–256
 
 % ------------------------------------------------------ контроль якості
 % Якщо розподіл вироджений — він НЕ зберігається (згідно з вимогою).
