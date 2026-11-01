@@ -1,0 +1,9 @@
+Multifractal Statistics
+
+Quantity                Mean_Z1         Std_Z2        Skew_Z3        Kurt_Z4
+Z1_Map             -2.08143e-02    7.65937e-01   -1.41244e-01    1.98418e+00
+Z2_Map             -1.55084e-04    1.80738e+00   -2.11166e-04    1.78538e+00
+
+Quantity        Delta_h         h0         D0         D1         D2  Delta_h_L  Delta_h_R
+Z1               0.6344     1.2343     1.1836     1.1403     1.1047     0.2470     0.3874
+Z2               0.8730     1.2139     1.2573     1.2542     1.1987     0.3057     0.5673

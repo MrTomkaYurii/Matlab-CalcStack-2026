@@ -3,8 +3,9 @@ function tp_run_LB_CB_rho(CFG)
 %   для кожного  зразок × приклад × фазове вікно × алгоритм × крок  --
 %       result.mat Кроку A  ->  LB_0_90, LB_45_135, CB, rho, LB  ->
 %       збереження чисел (CFG.stepB.saveMat)  ->  статистика (CFG.stepB.stats:
-%       <елемент>_stats.txt у теці кожного елемента)  ->  рисунки (CFG.stepB.visualize,
-%       лише для вікон CFG.viz.phases)  ->  наприкінці аналітика (CFG.stepB.analytics).
+%       <елемент>_stats.txt у теці кожного елемента)  --  ПЕРШИЙ прохід, для ВСІХ вікон CFG.fik.phases;
+%       далі аналітика (CFG.stepB.analytics); ОСТАННІМ -- рисунки (CFG.stepB.visualize, лише для
+%       вікон CFG.viz.phases; довгі, тому окремим проходом з уже збережених result.mat).
 %   Жодних хардкодів: усе, що змінюється між прогонами, лежить у CFG.
 %   Крок A (f_ik) рахується з нуля з сирих полів (CFG.fik.source = 'compute') або береться
 %   з готових August-результатів ('august'); у 'orthogonal' змінна result.mat зветься Rd, в інших -- R.
@@ -20,6 +21,7 @@ tp_prepare_fik_calc(CFG);
 [~, vizPhaseIdx]       = tp_select_phases(CFG, CFG.viz.phases);   % для яких -- ще й рисунки
 
 nDone = 0;  nSkipped = 0;  allRows = {};
+vizFiles = {};  vizDirs = {};      % що малювати ДРУГИМ проходом (шлях до збереженого R2 і напрям)
 for s = 1:numel(CFG.samples)
     for e = 1:numel(CFG.paths.examples)
         smp = CFG.samples{s};  ex = CFG.paths.examples{e};
@@ -56,8 +58,11 @@ for s = 1:numel(CFG.samples)
                     for d = 1:numel(R.dirs)
                         dName = R.dirs{d};
                         if ~stepWanted(dName, CFG.fik.steps), continue; end
-                        rows = runOne(R, dName, CFG, k, ismember(k, vizPhaseIdx));
+                        [rows, savedFile] = runOne(R, dName, CFG, k, ismember(k, vizPhaseIdx));
                         allRows = [allRows, rows]; %#ok<AGROW>
+                        if ~isempty(savedFile)
+                            vizFiles{end+1} = savedFile;  vizDirs{end+1} = dName; %#ok<AGROW>
+                        end
                         nDone = nDone + 1;
                     end
                 end
@@ -65,18 +70,32 @@ for s = 1:numel(CFG.samples)
         end
     end
 end
-fprintf('\nГотово: оброблено %d напрямів/кроків, пропущено %d. Вихід: %s\n', ...
+fprintf('\nЧИСЛА Й СТАТИСТИКА готові для всіх обраних вікон: оброблено %d напрямів/кроків, пропущено %d. Вихід: %s\n', ...
         nDone, nSkipped, CFG.paths.saveRoot);
 
-% ---- аналітика: рядки таблиці (накопичені вище) -> таблиця по алгоритмах -> тренди/рисунки
+% ---- аналітика: рядки таблиці (накопичені вище) -> таблиця по алгоритмах -> тренди/рисунки.
+%      Йде ДО рисунків Кроку B: вони довгі (близько 100 на вікно й напрям), а аналітика -- швидка.
 if CFG.stepB.analytics && ~isempty(allRows)
     tp_an_append_rows(CFG, allRows);
     tp_run_analytics(CFG);
 end
+
+% ---- рисунки Кроку B -- ДРУГИМ проходом, з уже збережених result.mat (вікна CFG.viz.phases).
+%      Так числа, статистика й аналітика ВСІХ вікон з'являються одразу, а довгі рисунки -- наприкінці.
+for i = 1:numel(vizFiles)
+    S = load(vizFiles{i}, 'R2');
+    fprintf('\n=== рисунки %d/%d: %s | %s | %s ===\n', i, numel(vizFiles), S.R2.sample, S.R2.algorithm, vizDirs{i});
+    tp_visualize_LB_CB_rho(S.R2, vizDirs{i}, CFG);
+end
+if ~isempty(vizFiles)
+    fprintf('\nГотово: рисунки для %d напрямів/кроків.\n', numel(vizFiles));
+end
 end
 
 % ------------------------------------------------------------------------
-function rows = runOne(R, dName, CFG, k, doViz)
+function [rows, savedFile] = runOne(R, dName, CFG, k, doViz)
+% Числа + статистика. savedFile -- шлях до збереженого R2, якщо для цього напряму треба намалювати
+% рисунки (їх малює основна функція ДРУГИМ проходом); '' -- рисунків не треба.
 fprintf('\n=== %s | %s | %s ===\n', R.sample, R.algorithm, dName);
 R2 = tp_LB_CB_rho_from_result(R, dName);
 
@@ -88,8 +107,11 @@ for e = 1:numel(R2.elements)
         elem, mean(v), std(v), mean(a), std(a), numel(v), numel(D.mod));
 end
 
+savedFile = '';
 if CFG.stepB.saveMat
-    fprintf('  числа -> %s\n', tp_save_LB_CB_rho_result(R2, dName, CFG));
+    outFile = tp_save_LB_CB_rho_result(R2, dName, CFG);
+    fprintf('  числа -> %s\n', outFile);
+    if CFG.stepB.visualize && doViz, savedFile = outFile; end   % рисунки -- другим проходом
 end
 
 % статистика: текстові файли (stepB.stats) і/або рядки для аналітики (stepB.analytics)
@@ -99,8 +121,8 @@ if CFG.stepB.stats || CFG.stepB.analytics
     if CFG.stepB.stats, fprintf('  статистика -> <елемент>\\<елемент>_stats.txt (5 файлів)\n'); end
 end
 
-if CFG.stepB.visualize && doViz
-    tp_visualize_LB_CB_rho(R2, dName, CFG);
+if CFG.stepB.visualize && doViz && ~CFG.stepB.saveMat
+    tp_visualize_LB_CB_rho(R2, dName, CFG);   % result.mat не зберігається -- другого проходу нема, малюємо одразу
 end
 end
 

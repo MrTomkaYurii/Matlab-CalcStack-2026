@@ -1,0 +1,12 @@
+ACF and PSD Statistics
+
+Quantity                        Mean_Z1         Std_Z2        Skew_Z3        Kurt_Z4
+Z1_Map                     -2.16919e-02    7.66059e-01   -1.39768e-01    1.98510e+00
+Z1_ACF_PeakArea             6.67464e-02    1.59591e-01    3.25811e+00    1.39454e+01
+Z1_log10_PSD               -2.18932e+00    6.39496e-01   -3.95682e-02    1.16172e+01
+Correlation_Length_Z1: Lx = 22.05 px, Ly = 26.28 px
+
+Z2_Map                     -9.32230e-05    1.80756e+00   -3.10801e-05    1.78598e+00
+Z2_ACF_PeakArea             2.07562e-01    2.28914e-01    9.96780e-01    3.13915e+00
+Z2_log10_PSD               -2.06272e+00    7.40008e-01    6.77516e-01    9.94411e+00
+Correlation_Length_Z2: Lx = 87.49 px, Ly = 38.20 px
