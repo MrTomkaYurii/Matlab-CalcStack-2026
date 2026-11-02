@@ -72,6 +72,10 @@ if any(strcmpi(CFG.source,{'real','mat'})) && isfield(CFG.paths,'examples') && ~
     examplesList = CFG.paths.examples;
 end
 
+% Прогрес: крок = (зразок, приклад, фазове вікно)
+nProg = numel(CFG.samples) * numel(examplesList) * max(1, phaseOn * numel(phaseList));
+iProg = 0;  tProg = tic;
+
 for s = 1:numel(CFG.samples)
     sampleName = CFG.samples{s};
 
@@ -144,6 +148,8 @@ for s = 1:numel(CFG.samples)
                              'phase_index', k, 'phase_deg', round(U(k)/pi*180), 'elementWindow', false);
                 rowsCell = saveWindowedResults(cacheK, CFG, phaseOut, phaseLabel, ctx);
                 appendAnalytics(CFG, rowsCell, phaseLabel);
+                iProg = iProg + 1;
+                tp_progress(iProg, nProg, tProg, phaseLabel);
             end
             tp_phase_trend(CFG, sampleName, example);
             continue;

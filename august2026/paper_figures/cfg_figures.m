@@ -26,7 +26,7 @@ FIG = struct();
 %   Структура теки виводу:
 %     FIG.out.root\ FigN\ <color|gray>\ <svg|pdf|png>\ <generalized|OX|OY>\ <файл>
 %                        FigN\ stats.<набір>.<variant>.txt / .docx  (таблиці моментів; окремий файл на алгоритм)
-FIG.out.root    = 'C:\August 2026-Results\Розрахунки - Скомпановані рисунки';
+FIG.out.root    = 'C:\August 2026-Results\Розрахунки - Скомпановані рисунки - Перераховано 18.09';
 FIG.out.formats = {'svg','pdf','png'};   % 'tiff' повернути у список для фіналу журналу
 FIG.out.tiffDPI = 600;   % растровий TIFF (фінал): 300 фото / 600 змішане / 1200 штрих
 FIG.out.pngDPI  = 300;   % PNG — прев'ю / вставити у Word чи лист
@@ -44,7 +44,7 @@ FIG.out.pngDPI  = 300;   % PNG — прев'ю / вставити у Word чи �
 %   run_all_figures при цьому пропустить рендер і зробить лише make_stats_table;
 %   те саме напряму: make_stats_table(cfg_figures())
 %   Поодинокі рисунки й далі запускаються напряму: make_fig3_f23_f24(cfg_figures())%
- FIG.build = {'Fig3','Fig4','Fig5','Fig6','Fig7'};   % повний прогін (рисунки + таблиці)
+ FIG.build = {'Fig1','Fig2','Fig3','Fig4','Fig5','Fig6','Fig7','stats'};   % повний прогін (рисунки + таблиці)
 
 %% 3 ─── ДЖЕРЕЛО ДАНИХ ────────────────────────────────────────────────────
 FIG.data.saveRoot = 'C:\August 2026-Results\Розрахунки - Двот. елем. ММ';

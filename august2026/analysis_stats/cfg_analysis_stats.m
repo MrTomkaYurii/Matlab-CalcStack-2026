@@ -6,7 +6,7 @@ function CFG = cfg_analysis_stats()
 CFG = struct();
 
 % ─── Джерело даних (де лежать FigN/stats.*.txt) ───────────────────────
-CFG.dataRoot = 'C:\August 2026-Results\Розрахунки - Скомпановані рисунки';
+CFG.dataRoot = 'C:\August 2026-Results\Розрахунки - Скомпановані рисунки - Перераховано 18.09';
 
 % ─── Вивід (PNG, кеш) ────────────────────────────────────────────────
 CFG.outRoot = 'C:\August 2026-Results\Аналітика - Статистичні моменти';

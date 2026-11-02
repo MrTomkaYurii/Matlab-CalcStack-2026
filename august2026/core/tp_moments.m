@@ -5,7 +5,7 @@ function [mu, sd, sk, ku, n] = tp_moments(v, isPhase)
 %   viz_stats_table (текстовий файл) і аналітики, щоб цифри збігались.
 %
 %   isPhase=false -> центральні моменти:
-%       Z1 = середнє, Z2 = СКВ (N-1), Z3 = асиметрія, Z4 = ексцес - 3
+%       Z1 = середнє, Z2 = СКВ (1/K), Z3 = асиметрія, Z4 = ексцес - 3
 %   isPhase=true  -> кругові моменти (не залежать від запису фази
 %       в (-pi,pi] чи [0,2pi)):
 %       M1 = mean(exp(i*v)) = R*exp(i*mu),  M2 = mean(exp(2i*v)) = R2*exp(i*mu2)
@@ -27,7 +27,7 @@ if isPhase
     sk = R2*sin(m2 - 2*m1) / q^1.5;
     ku = (R2*cos(m2 - 2*m1) - R^4) / q^2;
 else
-    mu = mean(v); sd = std(v);
+    mu = mean(v); sd = std(v, 1);          % 1/K під коренем (рецензія 2, п. 1c)
     z  = (v-mu) / max(sd, eps);
     sk = mean(z.^3); ku = mean(z.^4) - 3;
 end

@@ -41,7 +41,7 @@ for k = [1 4]
         A = Rc.data.step_1.(CFG.elements{e});  B = Rg.data.step_1.(CFG.elements{e});
         m = isfinite(A.mod) & isfinite(B.mod);
         assert(isequal(isfinite(A.mod), isfinite(B.mod)), 'GPU/CPU: різні NaN-маски (%s)', CFG.elements{e});
-        worst = max(worst, max(abs(A.mod(m)-B.mod(m)) ./ max(abs(A.mod(m)), eps)));
+        worst = max([worst; abs(A.mod(m)-B.mod(m)) ./ max(abs(A.mod(m)), eps)]);   % пустий елемент (немає каналу) не ламає звірку
     end
     fprintf('звірка, вікно %d: макс. відн. різниця |f| GPU vs CPU = %.2e (GPU %.2f c)\n', k, worst, tg);
     assert(worst < 1e-3, 'GPU і CPU розходяться більше ніж на 1e-3 — розрахунок зупинено');

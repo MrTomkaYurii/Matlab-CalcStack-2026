@@ -2,7 +2,7 @@ function z = stats_moments(x, excessKurt, isPhase)
 % STATS_MOMENTS  Чотири статистичні моменти розподілу (Z1..Z4), NaN відкинуті.
 %   z = [Z1 Z2 Z3 Z4]:
 %     Z1 = середнє
-%     Z2 = СКВ (std, нормування на N-1)
+%     Z2 = СКВ (std, нормування на K)
 %     Z3 = асиметрія (skewness)
 %     Z4 = ексцес (kurtosis); excessKurt=true -> надлишковий (kurtosis-3)
 %   isPhase=true -> кругові моменти аргументу (tp_moments, режим фази):
@@ -27,7 +27,7 @@ if isPhase
     return;
 end
 m  = mean(x);
-s  = std(x, 0);                 % 0 -> нормування на N-1
+s  = std(x, 1);                 % 1 -> нормування на K (рецензія 2, п. 1c)
 if s <= 0
     z = [m 0 NaN NaN];
     return;
