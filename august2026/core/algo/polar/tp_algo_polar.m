@@ -31,10 +31,8 @@ thetaDeg = 0 : P.angleStep : (P.angleMax - P.angleStep);
 theta    = thetaDeg * pi/180;
 nT       = numel(theta);
 
-rcSrc = 'prav';
-if isfield(CFG,'mat') && isfield(CFG.mat,'rcSource'), rcSrc = CFG.mat.rcSource; end
-pols  = {'in0','in45','in90','inRC'};                 % що потребує tp_fik_pair
-src   = {'in0','in45','in90', ['in' rcSrc]};          % звідки брати в IMG
+pols  = tp_fik_pols();                                % що потребує tp_fik_pair
+src   = pols;                                         % inRC/inLC — псевдоніми з tp_load_mat
 
 % --- сітка перших точок (прорідження posStep по обох осях) --------------
 rr = 1:posStep:N;  cc = 1:posStep:N;
@@ -44,7 +42,7 @@ full = (numel(rr) == N && numel(cc) == N);
 
 % --- точка 1 (на сітці) — не залежить від кута/радіуса -----------------
 A1 = struct();
-for p = 1:4
+for p = 1:numel(pols)
     A1.(pols{p}) = struct('Ex', IMG.(src{p}).Ex(rr,cc), 'Ey', IMG.(src{p}).Ey(rr,cc));
 end
 
@@ -78,7 +76,7 @@ for si = 1:numel(P.radii)
         r2 = R1 + rho*sin(th);
 
         A2 = struct();
-        for p = 1:4
+        for p = 1:numel(pols)
             Ex2 = interp2(IMG.(src{p}).Ex, c2, r2, 'linear', NaN);
             Ey2 = interp2(IMG.(src{p}).Ey, c2, r2, 'linear', NaN);
             A2.(pols{p}) = struct('Ex', Ex2, 'Ey', Ey2);

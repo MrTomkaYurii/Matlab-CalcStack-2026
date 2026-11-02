@@ -120,6 +120,18 @@ if strcmpi(CFG.source, 'mat')
         tp_assert(ismember(lower(CFG.mat.rcSource), {'liv','prav'}), ...
             'CFG.mat.rcSource має бути ''liv'' або ''prav''');
     end
+    if isfield(CFG,'mat') && isfield(CFG.mat,'lcSource')
+        tp_assert(ismember(lower(CFG.mat.lcSource), {'liv','prav'}) && ...
+            ~strcmpi(CFG.mat.lcSource, CFG.mat.rcSource), ...
+            'CFG.mat.lcSource має бути ''liv'' або ''prav'' і відрізнятись від rcSource');
+    end
+    if isfield(CFG,'fik') && isfield(CFG.fik,'phaseRef')
+        tp_assert(ismember(lower(CFG.fik.phaseRef), {'full','x'}), ...
+            'CFG.fik.phaseRef має бути ''full'' або ''x''');
+    end
+else
+    fprintf(2, ['tp_check_config: source=%s дає лише 4 освітлення (0,45,90,RC); ' ...
+                'формулі (13) потрібні ще 135 і LC — tp_fik_pair впаде\n'], CFG.source);
 end
 
 if strcmpi(CFG.source, 'synthetic')

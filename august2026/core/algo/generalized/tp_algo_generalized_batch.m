@@ -11,7 +11,7 @@ function R = tp_algo_generalized_batch(IMG, CFG, sampleName, step)
 %     * перші точки — та сама проріджена сітка, що в tp_algo_generalized
 %       (для від'ємних зсувів сітка зсунута так само);
 %     * для стовпця Δx усі Δy рахуються пачками по CFG.gen.batchShifts:
-%       матриця [перші точки x зсуви], формули (6)-(13) і розд. 4.
+%       матриця [перші точки x зсуви], формули статті (10), (13) (tp_sc_vector).
 %
 %   CFG.gen.useGPU      : true — рахувати на GPU (gpuArray, NVIDIA)
 %   CFG.gen.precision   : 'single' (типово для GPU) | 'double'
@@ -55,18 +55,17 @@ else
             dir, nx, ny, posStep, prec, B);
 end
 
-% ---- попередньо: |Ex|, |Ey|, delta кожного освітлення на доповненій сітці
-pols = {'in0','in45','in90','inRC'};
+% ---- попередньо: комплексні Ex, Ey кожного освітлення на доповненій сітці
+pols = tp_fik_pols();
 Np = N + 2*mmax;                       % розмір доповненого кадру
 P = struct();
 for p = 1:numel(pols)
     S = IMG.(pols{p});
-    ax_ = nan(Np, prec);  ay_ = nan(Np, prec);  dl_ = nan(Np, prec);
-    ax_(mmax+(1:N), mmax+(1:N)) = cast(abs(S.Ex), prec);
-    ay_(mmax+(1:N), mmax+(1:N)) = cast(abs(S.Ey), prec);
-    dl_(mmax+(1:N), mmax+(1:N)) = cast(angle(S.Ey) - angle(S.Ex), prec);
-    if useGPU, ax_ = gpuArray(ax_); ay_ = gpuArray(ay_); dl_ = gpuArray(dl_); end
-    P.(pols{p}) = struct('Ex', ax_(:), 'Ey', ay_(:), 'd', dl_(:));
+    ex_ = complex(nan(Np, prec));  ey_ = complex(nan(Np, prec));
+    ex_(mmax+(1:N), mmax+(1:N)) = cast(S.Ex, prec);
+    ey_(mmax+(1:N), mmax+(1:N)) = cast(S.Ey, prec);
+    if useGPU, ex_ = gpuArray(ex_); ey_ = gpuArray(ey_); end
+    P.(pols{p}) = struct('Ex', ex_(:), 'Ey', ey_(:));
 end
 
 % ---- результат
@@ -93,7 +92,7 @@ for ix = 1:nx
         if useGPU, L1 = gpuArray(L1); end
         Q1 = struct();
         for p = 1:numel(pols)
-            Q1.(pols{p}) = struct('Ex', P.(pols{p}).Ex(L1), 'Ey', P.(pols{p}).Ey(L1), 'd', P.(pols{p}).d(L1));
+            Q1.(pols{p}) = struct('Ex', P.(pols{p}).Ex(L1), 'Ey', P.(pols{p}).Ey(L1));
         end
 
         for b0 = 1:B:numel(idxG)
@@ -139,29 +138,20 @@ end
 
 % ------------------------------------------------------------------------
 function F = fik_batch(Q1, P, L2, pols)
-% Формули (6)-(13) і розд. 4 tp_fik_pair.m для пачки пар:
+% Ті самі формули, що tp_fik_pair.m (стаття (10), (13)), для пачки пар:
 % перша точка — вектор (M x 1), друга — матриця індексів L2 (M x nb).
-a = cell(4,1);  b = cell(4,1);
+SC = {struct(),struct(),struct(),struct()};
 for p = 1:numel(pols)
     S1 = Q1.(pols{p});
-    Ex1 = S1.Ex;  Ey1 = S1.Ey;  d1 = S1.d;
-    Ex2 = P.(pols{p}).Ex(L2);  Ey2 = P.(pols{p}).Ey(L2);  d2 = P.(pols{p}).d(L2);
-    dd = d2 - d1;
-    EE = Ex1 .* Ex2;  YY = Ey1 .* Ey2;
-    c  = cos(dd);  s = sin(dd);
-    X12 = Ex1 .* Ey2;  X21 = Ex2 .* Ey1;
-    c2 = cos(d2);  s2 = sin(d2);  c1 = cos(d1);  s1 = sin(d1);
-    a{1}.(pols{p}) =  EE + YY .* c;            b{1}.(pols{p}) =  YY .* s;
-    a{2}.(pols{p}) =  EE - YY .* c;            b{2}.(pols{p}) = -YY .* s;
-    a{3}.(pols{p}) =  X12 .* c2 + X21 .* c1;   b{3}.(pols{p}) =  X12 .* s2 - X21 .* s1;
-    a{4}.(pols{p}) =  X12 .* s2 + X21 .* s1;   b{4}.(pols{p}) =  X12 .* c2 - X21 .* c1;
+    [SC{1}.(pols{p}), SC{2}.(pols{p}), SC{3}.(pols{p}), SC{4}.(pols{p})] = ...
+        tp_sc_vector(S1.Ex, S1.Ey, P.(pols{p}).Ex(L2), P.(pols{p}).Ey(L2));
 end
 F = struct();
 for i = 1:4
-    Asum = a{i}.in0 + a{i}.in90;  Bsum = b{i}.in0 + b{i}.in90;
-    F.(sprintf('f%d1',i)) = 0.5*complex(Asum,  Bsum);
-    F.(sprintf('f%d2',i)) = 0.5*complex(Asum, -Bsum);
-    F.(sprintf('f%d3',i)) = complex(a{i}.in45 - Asum, b{i}.in45 - Bsum);
-    F.(sprintf('f%d4',i)) = complex(a{i}.inRC - Asum, b{i}.inRC - Bsum);
+    S = SC{i};
+    F.(sprintf('f%d1',i)) = (S.in0  + S.in90)  / 2;
+    F.(sprintf('f%d2',i)) = (S.in0  - S.in90)  / 2;
+    F.(sprintf('f%d3',i)) = (S.in45 - S.in135) / 2;
+    F.(sprintf('f%d4',i)) = (S.inRC - S.inLC)  / 2;
 end
 end

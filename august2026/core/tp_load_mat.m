@@ -10,16 +10,18 @@ function [IMG, warnings] = tp_load_mat(CFG, sampleName, exampleName)
 %   (саме це й робить tp_fik_pair.m у цій копії проєкту).
 %
 %   IMG.(inPol).Ex, IMG.(inPol).Ey : NxN complex double
-%   inPol ∈ {in0,in45,in90,in135,inliv,inprav,inRC}
-%   inRC — псевдонім на CFG.mat.rcSource ('liv' або 'prav'): старим формулам
-%   (розділ 4) потрібне рівно ОДНЕ освітлення "RC", а нових станів два.
+%   inPol ∈ {in0,in45,in90,in135,inliv,inprav,inRC,inLC}
+%   inRC / inLC — псевдоніми на CFG.mat.rcSource / CFG.mat.lcSource
+%   ('prav' / 'liv'), потрібні формулі (13): f_i4 = (SC(RC) - SC(LC))/2.
+%   Пікселі з |Ex| або |Ey| <= CFG.mat.ampMin (типово 0) -> NaN.
+%   CFG.fik.phaseRef = 'x' -> поле приводиться до фази Ex = 0 у кожному пікселі.
 %
 %   Деякі вихідні .mat-файли виявились ДІЙСНИМИ (суцільні нулі) замість
 %   комплексних — сира голограма для цих кадрів не мала інтерференційних
 %   смуг (перевірено візуально: немає носійної частоти, на відміну від
 %   робочих кадрів). За рішенням користувача (переголовити ці зразки
 %   неможливо) — НЕ відкидаємо приклад цілком, а вантажимо канал як
-%   0+0i і повертаємо явний список попереджень `warnings` (cellstr),
+%   0+0i (далі -> NaN, бо |E| = 0) і повертаємо список попереджень `warnings` (cellstr),
 %   щоб ця прогалина була видно в результатах, а не мовчки загубилась.
 
 if nargin < 3, exampleName = ''; end
@@ -53,6 +55,10 @@ for c = 1:numel(candidates)
 end
 
 N  = CFG.crop.size;  x0 = CFG.crop.x0;  y0 = CFG.crop.y0;
+ampMin = 0;
+if isfield(CFG,'mat') && isfield(CFG.mat,'ampMin') && ~isempty(CFG.mat.ampMin), ampMin = CFG.mat.ampMin; end
+phaseRef = 'full';
+if isfield(CFG,'fik') && isfield(CFG.fik,'phaseRef') && ~isempty(CFG.fik.phaseRef), phaseRef = CFG.fik.phaseRef; end
 
 IMG = struct();
 for s = 1:numel(states)
@@ -71,15 +77,31 @@ for s = 1:numel(states)
         'tp_load_mat: %s (%dx%d) замалий для crop %d від (%d,%d)', ...
         exFile, size(Ex,1), size(Ex,2), N, x0, y0);
 
-    IMG.(inNames{s}) = struct( ...
-        'Ex', Ex(y0:y0+N-1, x0:x0+N-1), ...
-        'Ey', Ey(y0:y0+N-1, x0:x0+N-1));
+    Ex = Ex(y0:y0+N-1, x0:x0+N-1);
+    Ey = Ey(y0:y0+N-1, x0:x0+N-1);
+
+    % Недопустимі пікселі (методика п. 2.2, стаття S8): при |E| = 0 фаза не
+    % визначена -> NaN (пара з такою точкою випадає). Опційно поріг ampMin.
+    bad = abs(Ex) <= ampMin | abs(Ey) <= ampMin;
+    Ex(bad) = complex(NaN);  Ey(bad) = complex(NaN);
+
+    % Соглашення про фазу: 'full' (типово, стаття після рівн. (11)) — поля як є;
+    % 'x' — фаза Ex = 0 у кожному пікселі, як у записі рівн. (20).
+    if strcmpi(phaseRef, 'x')
+        ph = exp(-1i*angle(Ex));
+        Ex = Ex .* ph;  Ey = Ey .* ph;
+    end
+
+    IMG.(inNames{s}) = struct('Ex', Ex, 'Ey', Ey);
 end
 
-% псевдонім inRC -> CFG.mat.rcSource ('liv' чи 'prav', за замовчуванням 'prav')
-rcSrc = 'prav';
+% псевдоніми inRC / inLC -> CFG.mat.rcSource / CFG.mat.lcSource ('prav' / 'liv')
+rcSrc = 'prav';  lcSrc = 'liv';
 if isfield(CFG,'mat') && isfield(CFG.mat,'rcSource'), rcSrc = CFG.mat.rcSource; end
+if isfield(CFG,'mat') && isfield(CFG.mat,'lcSource'), lcSrc = CFG.mat.lcSource; end
+tp_assert(~strcmp(rcSrc, lcSrc), 'tp_load_mat: rcSource і lcSource однакові (%s)', rcSrc);
 IMG.inRC = IMG.(['in' rcSrc]);
+IMG.inLC = IMG.(['in' lcSrc]);
 end
 
 % ------------------------------------------------------------------------

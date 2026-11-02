@@ -11,7 +11,7 @@ function S = tp_analytics_compute_summary(D, CFG)
 %   додаєш/перейменовуєш, онови і той список.
 
 vMod = D.mod(isfinite(D.mod));
-vArg = D.arg(isfinite(D.arg));
+vArg = D.arg(isfinite(D.arg) & D.mod > 0);   % |f| = 0 -> аргумент не визначений
 [muM,sdM,skM,kuM,nM] = tp_moments(vMod, false);
 [muA,sdA,skA,kuA,nA] = tp_moments(vArg, true);
 
