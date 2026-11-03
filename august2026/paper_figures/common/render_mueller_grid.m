@@ -145,9 +145,17 @@ for b = 1:W
             set(cbAx, 'YTick',[], 'XLim',cl, 'Box','on', 'LineWidth',FIG.line.axis, ...
                     'TickDir','out', 'FontSize',fs, 'XColor','k', 'YColor','k', 'XAxisLocation','bottom');
             if isMod
-                set(cbAx, 'XTick',cl, 'XTickLabel', endlbl(cl(1), cl(2)));
+                sfx = '';   % дрібна шкала: мантиса на тіках, множник — у підпис
+                m = max(abs(cl));
+                if m > 0 && m < 1e-2
+                    e = floor(log10(m));
+                    tl = endlbl(cl(1)/10^e, cl(2)/10^e);  sfx = sprintf(', {\\times}10^{%d}', e);
+                else
+                    tl = endlbl(cl(1), cl(2));
+                end
+                set(cbAx, 'XTick',cl, 'XTickLabel', tl, 'XTickLabelRotation',0);
                 isNorm = ~(isfield(FIG,'data') && isfield(FIG.data,'normalize') && ~FIG.data.normalize);
-                lab(gx + grpW/2, cbY + cbH + 2.2, tern(isNorm,'|f_{ik} / f_{11}|','|f_{ik}|  (a.u.)'), ...
+                lab(gx + grpW/2, cbY + cbH + 2.2, [tern(isNorm,'|f_{ik} / f_{11}|','|f_{ik}|  (a.u.)') sfx], ...
                     'VerticalAlignment','middle', 'FontSize',fs-1);
             else
                 set(cbAx, 'XTick',argTicks(cl), 'XTickLabel',argTickLbl(cl));
@@ -214,13 +222,14 @@ if v == 0
 elseif abs(v) >= 1e-3 && abs(v) < 1e4
     s = num2str(v, '%.2g');
 else
-    s = num2str(v, '%.0e');
+    e = floor(log10(abs(v)));   % дрібний модуль — "2.1x10^{-5}", не "0"
+    s = sprintf('%.2g{\\times}10^{%d}', v / 10^e, e);
 end
 end
 
 function labs = endlbl(lo, hi)
 % Мізерний проти діапазону кінець осі -> '0' (а не '1e-05').
-thr = max(1e-4, 0.01 * abs(hi - lo));
+thr = 0.01 * abs(hi - lo);   % лише відносно діапазону: абсолютний 1e-4 обнуляв дрібний модуль
 labs = { tern(abs(lo) < thr, '0', numlbl(lo)), tern(abs(hi) < thr, '0', numlbl(hi)) };
 end
 

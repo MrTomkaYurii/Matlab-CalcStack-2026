@@ -125,6 +125,13 @@ if any(strcmp(kind, {'raw','psd','skel'}))   % 'wav' тепер перерізи
     ymaxArg = ymaxArg * 1.1;
     blockYmaxMod = blockYmaxMod * 1.1;
     blockYmaxArg = blockYmaxArg * 1.1;
+    % у вузькому вікні точок у рази менше (OX/OY/XY ~10%) — на спільній шкалі
+    % гістограма "лежить". Шкала вікна стискається так, щоб пік займав не
+    % менше FIG.hist.minFill висоти (1/3 — видно, що менше; 1 — окрема шкала).
+    minFill = 1/3;
+    if isfield(FIG.hist,'minFill') && ~isempty(FIG.hist.minFill); minFill = FIG.hist.minFill; end
+    blockYmaxMod = min(ymaxMod, max(blockYmaxMod, blockYmaxMod / 1.1 / minFill));
+    blockYmaxArg = min(ymaxArg, max(blockYmaxArg, blockYmaxArg / 1.1 / minFill));
 end
 
 % ---- overlay для підписів ----
@@ -207,6 +214,7 @@ for r = 1:4
             xlabel(ax, P.axX, 'Color','k');
             ylabel(ax, P.axY, 'Color','k');
 
+            sfx = '';   % множник шкали (", ×10^{e}") для дрібних значень — у заголовок
             if ~isMfr
                 % горизонтальний colorbar + заголовок НАД картою
                 yMapTop = yb(r) + mS;
@@ -221,11 +229,12 @@ for r = 1:4
                 if strcmp(kind,'raw') && ~isMod
                     set(cbAx, 'XTick',argTicks(cl), 'XTickLabel',argTickLbl(cl));
                 else
-                    set(cbAx, 'XTick',cl, 'XTickLabel', endlbl(cl(1), cl(2)));
+                    [tl, sfx] = sclbl(cl(1), cl(2));
+                    set(cbAx, 'XTick',cl, 'XTickLabel', tl, 'XTickLabelRotation',0);
                 end
             end
 
-            if isMod; ttl = sprintf('|%s|', elemTex{eIdx(c)});
+            if isMod; ttl = sprintf('|%s|%s', elemTex{eIdx(c)}, sfx);
             else;     ttl = sprintf('arg(%s)', elemTex{eIdx(c)});
             end
             lab(colX(c) + mS/2, yb(r) + rowH(r) + g.titleH*0.5, ttl);
@@ -306,24 +315,22 @@ for r = 1:4
             bar(ax, ctr, cnt, 1, 'FaceColor',FIG.hist.fill, 'EdgeColor',FIG.hist.edge, ...
                 'LineWidth',FIG.hist.edgeW);
             if isMod
-                if isfield(FIG.hist,'perWindowMod') && FIG.hist.perWindowMod
-                    ymax = blockYmaxMod(rowWin(r));
-                else
-                    ymax = ymaxMod;
-                end
+                ymax = blockYmaxMod(rowWin(r));   % шкала свого фазового вікна (див. minFill)
             else
-                ymax = ymaxArg;   % єдиний інтервал для всіх аргументів у межах фігури
+                ymax = blockYmaxArg(rowWin(r));
             end
             set(ax, 'Color','w', 'XLim',[edg(1) edg(end)], 'YLim',[0 ymax], ...
-                    'TickLength',[0.02 0.02], 'YTick',[0 ymax], ...
+                    'TickLength',[0.02 0.02], 'YTick',[0 ymax/1.1], ...
                     'YTickLabel',{'0', explbl(ymax/1.1)}, 'TickLabelInterpreter','tex', ...
                     'YTickLabelRotation', 90, 'XColor','k', 'YColor','k');
+            hsfx = '';
             if strcmp(kind,'raw') && ~isMod
                 set(ax, 'XTick',argTicks(cl), 'XTickLabel',argTickLbl(cl));
             else
-                set(ax, 'XTick',[edg(1) edg(end)], 'XTickLabel', endlbl(edg(1), edg(end)));
+                [tl, hsfx] = sclbl(edg(1), edg(end));
+                set(ax, 'XTick',[edg(1) edg(end)], 'XTickLabel', tl, 'XTickLabelRotation',0);
             end
-            xlabel(ax, botXlab(kind, isMod, elemTex{eIdx(c)}), 'Color','k');
+            xlabel(ax, [botXlab(kind, isMod, elemTex{eIdx(c)}) hsfx], 'Color','k');
             ylabel(ax, ylabForNorm(FIG.hist.norm), 'Color','k');
         end
 
@@ -400,14 +407,29 @@ end
 function s = numlbl(v)
 if v == 0; s = '0';
 elseif abs(v) >= 1e-3 && abs(v) < 1e4; s = num2str(v, '%.2g');
-else; s = num2str(v, '%.0e');
+else; s = explbl(v);   % дрібний модуль (напр. без нормування f11) — "2.1x10^{-5}", не "0"
 end
+end
+
+function [labs, sfx] = sclbl(lo, hi)
+% Як endlbl, але дрібну шкалу (|кінець| < 1e-2, напр. модуль без нормування
+% на f11 через порожній канал) підписує мантисою, а множник ", ×10^{e}"
+% повертає окремо — для підпису осі (довгий тік "1.6×10^{-6}" повертався й
+% наповзав на підпис).
+sfx = '';
+m = max(abs([lo hi]));
+if m > 0 && m < 1e-2
+    e = floor(log10(m));
+    lo = lo / 10^e;  hi = hi / 10^e;
+    sfx = sprintf(', {\\times}10^{%d}', e);
+end
+labs = endlbl(lo, hi);
 end
 
 function labs = endlbl(lo, hi)
 % Підписи двох кінців осі (гістограма / colorbar): кінець, МІЗЕРНИЙ проти
 % діапазону, показуємо як '0' — а не '1e-05' тощо.
-thr = max(1e-4, 0.01 * abs(hi - lo));
+thr = 0.01 * abs(hi - lo);   % лише відносно діапазону: абсолютний поріг 1e-4 обнуляв увесь дрібний модуль
 f = @(v) tern(abs(v) < thr, '0', numlbl(v));
 labs = {f(lo), f(hi)};
 end
