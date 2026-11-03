@@ -1,4 +1,5 @@
-function run_Overnight_All()
+function run_Overnight_All(firstStage)
+% run_Overnight_All(4) — почати з етапу 4 (result.mat уже пораховані).
 % RUN_OVERNIGHT_ALL  Повний нічний перерахунок (листопад 2026), без участі людини:
 %   1) тести формул  2) звірка GPU=CPU  3) усі result.mat (GPU)
 %   4) рисунки статті + таблиці Z  5) таблиця кругових моментів (16 елементів)
@@ -9,6 +10,7 @@ function run_Overnight_All()
 %   Запуск: відкрити цей файл у MATLAB і натиснути Run (F5),
 %           або  matlab -batch "run_Overnight_All"   (з теки august2026)
 
+if nargin < 1, firstStage = 1; end
 here = fileparts(mfilename('fullpath'));
 addpath(here, fullfile(here,'config'), genpath(fullfile(here,'core')), ...
     fullfile(here,'paper_figures'), fullfile(here,'paper_figures','common'), fullfile(here,'tests'), ...
@@ -34,7 +36,7 @@ stages = {
 n = size(stages, 1);
 T0 = tic;
 failed = {};
-for i = 1:n
+for i = firstStage:n
     fprintf('\n\n#### ЕТАП %d/%d: %s  [%s] ####\n', i, n, stages{i,1}, char(datetime('now','Format','HH:mm')));
     if ~step(stages{i,:}), failed{end+1} = stages{i,1}; end %#ok<AGROW>
     tp_progress(i, n, T0, ['етап ' stages{i,1}]);
