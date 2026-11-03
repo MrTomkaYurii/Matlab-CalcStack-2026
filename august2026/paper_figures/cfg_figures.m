@@ -198,7 +198,7 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
     %% 8 ─── КОЛЬОРИ ─────────────────────────────────────────────────────────
     %   Кожен рисунок будується у ДВОХ варіантах — 'color' і 'gray' — в окремі
     %   підтеки. FIG.color.modes задає перелік.
-    FIG.color.modes = {'color', 'gray'};
+    FIG.color.modes = {'color'};   % 'gray' вимкнено: білий NaN збігався з білим (pi / max) у ЧБ-шкалах
     % Аргумент — ЦИКЛІЧНА палітра (рецензія 2: 0 і 2pi — та сама фаза, без
     % штучної межі в тканині): hsv у кольорі, cyclic_gray (чорн.-біл.-чорн.) у ЧБ.
     FIG.color.maps.color = struct('mod','jet',  'arg','hsv');           % модуль — jet (школа Ушенка)
