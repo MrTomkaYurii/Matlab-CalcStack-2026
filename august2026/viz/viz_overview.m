@@ -22,9 +22,14 @@ for c = 1:numel(CFG.viz.colormaps)
                 if ~isfield(R.data.(dir), elem), axis(axp,'off'); continue; end
                 Z = R.data.(dir).(elem).(qk);
                 im = imagesc(axp, ax.x, ax.y, Z); set(im,'AlphaData',isfinite(Z));
-                set(axp,'YDir','normal'); axis(axp,'image'); colormap(axp, cmap);
-                lo = min(Z(:),[],'omitnan'); hi = max(Z(:),[],'omitnan');
-                if isfinite(lo)&&isfinite(hi)&&lo<hi, caxis(axp,[lo hi]); end
+                set(axp,'YDir','normal'); axis(axp,'image');
+                if strcmp(qk,'arg')   % Arg — у [0, 2pi], циклічна палітра
+                    set(im,'CData',mod(Z,2*pi)); colormap(axp, viz_arg_cmap(cmap)); caxis(axp,[0 2*pi]);
+                else
+                    colormap(axp, cmap);
+                    lo = min(Z(:),[],'omitnan'); hi = max(Z(:),[],'omitnan');
+                    if isfinite(lo)&&isfinite(hi)&&lo<hi, caxis(axp,[lo hi]); end
+                end
                 colorbar(axp);
                 title(axp, sprintf('f_{%d%d}', i, k),'FontSize',10,'FontWeight','bold','Interpreter','tex');
                 S.apply(axp);

@@ -52,6 +52,7 @@ for d = 1:numel(R.dirs)
     Dcell = cell(nE,1); okMask = false(1,nE);
     for e = 1:nE
         Dcell{e} = R.data.(dir).(R.elements{e});   % .mod .arg .cplx
+        Dcell{e}.arg = mod(Dcell{e}.arg, 2*pi);    % Arg у [0, 2pi] — під циклічну палітру
         [ok, rM] = tp_validate(Dcell{e}.mod, CFG);
         okMask(e) = ok;
         if ~ok

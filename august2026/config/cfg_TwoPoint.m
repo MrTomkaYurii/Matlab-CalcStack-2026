@@ -211,27 +211,27 @@ CFG.viz.colormaps   = {'jet','gray'}; % цикл колірних мап (як �
 CFG.viz.parallel    = true;   % розпаралелити побудову графіків по f_ik (parfor, усі ядра);
                               % найповільніший етап (16 елементів × 7 подань) — раніше йшов
                               % на одному ядрі. false => послідовно (як було раніше)
-CFG.viz.overview    = false;   % Частина 01: сітки 4x4 (усі 16 f_ik) на рівні кроку
-CFG.viz.mapsHist    = false;   % (1) на елемент: 2x2 карти + гістограми (мод+арг)
-CFG.viz.blockSummary = false;  % Блок 1 за ТЗ: карти->гістограми->АКФ ОДНІЄЮ фігурою
+CFG.viz.overview    = true;    % Частина 01: сітки 4x4 (усі 16 f_ik) на рівні кроку
+CFG.viz.mapsHist    = true;    % (1) на елемент: 2x2 карти + гістограми (мод+арг)
+CFG.viz.blockSummary = true;   % Блок 1 за ТЗ: карти->гістограми->АКФ ОДНІЄЮ фігурою
                               % (доповнює (1) і (4B), не замінює)
-CFG.viz.surfContour = false;   % (2) на елемент: 2x2 3D-поверхні + контурні карти
-CFG.viz.contour3    = false;   % (2b) на елемент: контурні лінії у 3D (contour3)
-CFG.viz.blockContours = false; % Блок 3 за ТЗ: 2D контур + 3D контур ОДНІЄЮ фігурою
-CFG.viz.multifractal = false;  % Блок 4 (наш бонус, не з ТЗ): спектр f(h) з WTMM
+CFG.viz.surfContour = true;    % (2) на елемент: 2x2 3D-поверхні + контурні карти
+CFG.viz.contour3    = true;    % (2b) на елемент: контурні лінії у 3D (contour3)
+CFG.viz.blockContours = true;  % Блок 3 за ТЗ: 2D контур + 3D контур ОДНІЄЮ фігурою
+CFG.viz.multifractal = true;   % Блок 4 (наш бонус, не з ТЗ): спектр f(h) з WTMM
                               % (партиційна функція -> tau(q) -> f(h)), огляд ДЛЯ НАС;
                               % повний аналіз з ланцюжковим трекінгом ліній — у Горського.
                               % Додає CWT-розрахунок на елемент (як wavelet/skeleton) —
                               % вимкни (false), якщо важливіша швидкість повного прогону.
 
 CFG.multifractal.qRange = -5:0.5:5;  % діапазон порядків q для партиційної функції
-CFG.viz.wavelet     = false;   % (3) на елемент: вейвлет W(a,b) (мод+арг)
-CFG.viz.acfPsd      = false;   % (4A) на елемент: 2D АКФ + 2D PSD (мод+арг)
-CFG.viz.acfCuts     = false;   % (4B) на елемент: 1D перерізи ACF + їх PSD (log-log)
-CFG.viz.skeleton    = false;   % (5) на елемент: вейвлет-скелетон + гістограма максимумів
-CFG.viz.levelBands  = false;   % (6) на елемент: смуговий аналіз концентрації біля рівнів
+CFG.viz.wavelet     = true;    % (3) на елемент: вейвлет W(a,b) (мод+арг)
+CFG.viz.acfPsd      = true;    % (4A) на елемент: 2D АКФ + 2D PSD (мод+арг)
+CFG.viz.acfCuts     = true;    % (4B) на елемент: 1D перерізи ACF + їх PSD (log-log)
+CFG.viz.skeleton    = true;    % (5) на елемент: вейвлет-скелетон + гістограма максимумів
+CFG.viz.levelBands  = true;    % (6) на елемент: смуговий аналіз концентрації біля рівнів
                               % (маска + гістограма, окремо мод/арг), доповнює (2)
-CFG.viz.statsTable  = false;   % на елемент: mean/std/skew/kurt (мод+арг) у текстовий
+CFG.viz.statsTable  = true;    % на елемент: mean/std/skew/kurt (мод+арг) у текстовий
                               % файл <fXX>_stats.txt поряд із рисунками (Етап 2.1 ТЗ)
 CFG.viz.bandLevels   = 8;     % кількість рівнів для (6) (рівномірно між min і max)
 CFG.viz.bandWidthPct = 0.02;  % ширина смуги = ця частка від діапазону (max-min)

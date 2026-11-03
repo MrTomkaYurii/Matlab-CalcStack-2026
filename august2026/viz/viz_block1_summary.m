@@ -47,10 +47,11 @@ end
 % ------------------------------------------------------------------------
 function mapPanel(ax, x, y, Z, cmap, meta, cbLabel, ttl, S, isPhase)
 im = imagesc(ax, x, y, Z); set(im,'AlphaData',isfinite(Z));
-set(ax,'YDir','normal'); axis(ax,'image'); colormap(ax, cmap);
+set(ax,'YDir','normal'); axis(ax,'image');
 if isPhase
-    caxis(ax, [-pi pi]);
+    colormap(ax, viz_arg_cmap(cmap)); caxis(ax, [0 2*pi]);
 else
+    colormap(ax, cmap);
     lo = min(Z(:),[],'omitnan'); hi = max(Z(:),[],'omitnan');
     if isfinite(lo) && isfinite(hi) && lo<hi, caxis(ax,[lo hi]); end
 end
@@ -65,7 +66,7 @@ function histPanel(ax, Z, xlab, isPhase, nbins, faceColor, S)
 v = Z(isfinite(Z));
 histogram(ax, v, nbins, 'FaceColor',faceColor, 'EdgeColor',[0.2 0.2 0.2]);
 if isPhase
-    xlim(ax, [-pi pi]);
+    xlim(ax, [0 2*pi]);
 end
 xlabel(ax, xlab,'FontSize',S.labelSize); ylabel(ax,'Count','FontSize',S.labelSize);
 S.apply(ax);

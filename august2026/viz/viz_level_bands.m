@@ -58,7 +58,8 @@ for j = 1:NL
     axM = subplot(4, half, (maskRow-1)*half + col);
     Zshow = nan(size(Z)); Zshow(mask) = Z(mask);
     im = imagesc(axM, meta.x, meta.y, Zshow); set(im,'AlphaData',mask);
-    set(axM,'YDir','normal'); axis(axM,'image'); colormap(axM,cmap);
+    set(axM,'YDir','normal'); axis(axM,'image');
+    if strcmp(qtag,'arg'), colormap(axM, viz_arg_cmap(cmap)); else, colormap(axM, cmap); end
     if nPx > 0
         caxis(axM, [lvl-halfW, lvl+halfW]); cb = colorbar(axM); cb.Color = S.ink;
     end

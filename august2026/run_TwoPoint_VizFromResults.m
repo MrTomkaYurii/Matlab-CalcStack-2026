@@ -57,9 +57,18 @@ if isempty(files)
 end
 
 fprintf('=== Візуалізація з готових result.mat: %d файл(ів) ===\n', numel(files));
-nOk = 0; nFail = 0;
+% Журнал: після успішного малювання поряд із result.mat кладеться viz_done.txt.
+% Після перерви (вимкнули світло) такі теки пропускаються — продовжуємо з місця
+% зупинки. Перемалювати все заново: видалити viz_done.txt (або CFG.viz.redo = true).
+redo = isfield(CFG.viz,'redo') && CFG.viz.redo;
+nOk = 0; nFail = 0; nSkip = 0; tAll = tic;
 for i = 1:numel(files)
     f = files{i};
+    doneFile = fullfile(fileparts(f), 'viz_done.txt');
+    if ~redo && isfile(doneFile)
+        nSkip = nSkip + 1;
+        continue;
+    end
     fprintf('\n[%d/%d] %s\n', i, numel(files), f);
     try
         S = load(f);
@@ -83,13 +92,17 @@ for i = 1:numel(files)
         fprintf('  [ok] %s | %s | %s : намальовано за %.1f s\n', ...
                 R.sample, R.algorithm, strjoin(R.dirs, ','), toc(t));
         nOk = nOk + 1;
+        fid = fopen(doneFile, 'w', 'n', 'UTF-8');
+        fprintf(fid, '%s\n', char(datetime('now','Format','yyyy-MM-dd HH:mm:ss')));
+        fclose(fid);
     catch ME
         fprintf(2, '  [fail] tp_visualize: %s\n', ME.message);
         nFail = nFail + 1;
     end
+    tp_progress(nOk + nFail, numel(files) - nSkip, tAll, sprintf('рисунки %d/%d', i, numel(files)));
 end
 
-fprintf('\n=== Готово: %d ок, %d з помилками ===\n', nOk, nFail);
+fprintf('\n=== Готово: %d ок, %d з помилками, %d пропущено (вже намальовані) ===\n', nOk, nFail, nSkip);
 end
 
 % ------------------------------------------------------------------------

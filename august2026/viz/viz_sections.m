@@ -21,7 +21,7 @@ for c = 1:numel(CFG.viz.colormaps)
 
     % (2) контур аргументу
     ax = subplot(2,2,2);
-    contourPanel(ax, meta.x, meta.y, D.arg, cmap, nL, meta, meta.argLabel, ...
+    contourPanel(ax, meta.x, meta.y, D.arg, viz_arg_cmap(cmap), nL, meta, meta.argLabel, ...
                  sprintf('Argument contour  %s', meta.argLabel), S, smoothPx);
 
     % (3) 3D-поверхня модуля
@@ -31,7 +31,7 @@ for c = 1:numel(CFG.viz.colormaps)
 
     % (4) 3D-поверхня аргументу
     ax = subplot(2,2,4);
-    surfPanel(ax, meta.x, meta.y, D.arg, cmap, meta, meta.argLabel, ...
+    surfPanel(ax, meta.x, meta.y, D.arg, viz_arg_cmap(cmap), meta, meta.argLabel, ...
               sprintf('Argument 3D surface  %s', meta.argLabel), S);
 
     sgtitle(sprintf('%s  \\cdot  contours & 3D surfaces  [%s]', meta.titlePrefix, cmap), ...
