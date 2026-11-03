@@ -32,6 +32,19 @@ for si = 1:numel(C.samples)
         for vi = 1:numel(C.variants)
             v = C.variants{vi};
 
+            % уже збережені (усі кольорові режими) — пропуск (продовження після краху)
+            done = true;
+            for mi = 1:numel(FIG.color.modes)
+                mode = FIG.color.modes{mi};
+                base = sprintf('%s.%s-%s.%s.%s.%s%s.%s', ...
+                    figTag, elems{1}, elems{2}, v.tag, sTag, exTag(FIG), ex, mode);
+                done = done && fig_exists(fullfile(FIG.out.root, figTag, mode), base, FIG, v.tag);
+            end
+            if done
+                fprintf('  [є] %s / %s / %s%s / %s — вже збережено\n', figTag, sTag, exTag(FIG), ex, v.tag);
+                continue;
+            end
+
             % сирі карти — ОДИН раз на (зразок,приклад,варіант)
             winData = cell(1, numel(FIG.phase));
             ok = true;

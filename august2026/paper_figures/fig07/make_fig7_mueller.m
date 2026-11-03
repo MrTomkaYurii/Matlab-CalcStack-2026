@@ -29,6 +29,18 @@ for si = 1:numel(C.samples)
         for vi = 1:numel(C.variants)
             v = C.variants{vi};
 
+            exT = 'ex';
+            if isfield(FIG,'exampleTag') && ~isempty(FIG.exampleTag); exT = FIG.exampleTag; end
+            done = true;   % уже збережені — пропуск (продовження після краху)
+            for mi = 1:numel(FIG.color.modes)
+                base = sprintf('Fig7.mueller.%s.%s.%s%s.%s', v.tag, sTag, exT, ex, FIG.color.modes{mi});
+                done = done && fig_exists(fullfile(FIG.out.root, 'Fig7', FIG.color.modes{mi}), base, FIG, v.tag);
+            end
+            if done
+                fprintf('  [є] Fig7 / %s / %s%s / %s — вже збережено\n', sTag, exT, ex, v.tag);
+                continue;
+            end
+
             winData = cell(1, numel(FIG.phase));  ok = true;
             for w = 1:numel(FIG.phase)
                 try
@@ -48,8 +60,6 @@ for si = 1:numel(C.samples)
                 Fm.color.argMap = FIG.color.maps.(mode).arg;
                 figH = render_mueller_grid(winData, Fm);
                 outDir = fullfile(FIG.out.root, 'Fig7', mode);
-                exT = 'ex';
-                if isfield(FIG,'exampleTag') && ~isempty(FIG.exampleTag); exT = FIG.exampleTag; end
                 base = sprintf('Fig7.mueller.%s.%s.%s%s.%s', v.tag, sTag, exT, ex, mode);
                 fig_export(figH, outDir, base, FIG, v.tag);   % <fmt>\<v.tag>\ підтека
                 close(figH);

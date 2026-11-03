@@ -12,7 +12,8 @@ function run_Overnight_All(firstStage)
 %   ЖУРНАЛ (на випадок вимкнення світла): C:\August 2026-Results\overnight_journal.txt
 %   Кожен завершений етап дописується рядком "DONE | <етап> | <час>". Після
 %   перезапуску ці етапи пропускаються — просто запусти скрипт ще раз.
-%   Етап 9 (найдовший) ще й веде позначки viz_done.txt по кожному result.mat.
+%   Рядок "START | <етап>" без "DONE" після нього = на цьому етапі впало (лог — у рядку).
+%   Етап 4 пропускає вже збережені рисунки (fig_exists), етап 9 — теки з viz_done.txt.
 %   Перерахувати етап заново — видалити його рядок з журналу.
 %   run_Overnight_All(k) — почати не раніше етапу k (рядка k у списку).
 
@@ -51,11 +52,11 @@ for i = firstStage:n
         continue;
     end
     fprintf('\n\n#### ЕТАП %d/%d: %s  [%s] ####\n', i, n, stages{i,1}, char(datetime('now','Format','HH:mm')));
+    writeJournal(journal, 'START', stages{i,1}, logFile);   % START без DONE = тут упало
     if step(stages{i,:})
-        fid = fopen(journal, 'a', 'n', 'UTF-8');
-        fprintf(fid, 'DONE | %s | %s\n', stages{i,1}, char(datetime('now','Format','yyyy-MM-dd HH:mm')));
-        fclose(fid);
+        writeJournal(journal, 'DONE', stages{i,1}, '');
     else
+        writeJournal(journal, 'FAIL', stages{i,1}, logFile);
         failed{end+1} = stages{i,1}; %#ok<AGROW>
     end
     tp_progress(i, n, T0, ['етап ' stages{i,1}]);
@@ -66,6 +67,12 @@ if ~isempty(failed)
     fprintf(2, 'Етапи з помилками (див. лог %s):\n', logFile);
     fprintf(2, '  - %s\n', failed{:});
 end
+end
+
+function writeJournal(journal, tag, stage, note)
+fid = fopen(journal, 'a', 'n', 'UTF-8');
+fprintf(fid, '%s | %s | %s | %s\n', tag, stage, char(datetime('now','Format','yyyy-MM-dd HH:mm')), note);
+fclose(fid);
 end
 
 function done = readJournal(journal)
