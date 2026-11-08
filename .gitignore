@@ -9,3 +9,7 @@ final_combined_structure.mat
 # Python cache
 __pycache__/
 *.pyc
+
+# Результати (Word / згенеровані схеми) — не скрипти
+august2026/Збір стат-моментів/*.docx
+august2026/Збір стат-моментів/schemes/*.png
