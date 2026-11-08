@@ -4,7 +4,7 @@ r"""
 
   <DST>\Відсутні вхідні канали\FigN\png\<алгоритм>\*.png  + Word-файли в FigN
   <DST>\Усі вхідні канали\FigN\png\<алгоритм>\*.png       + Word-файли в FigN
-  (+ «Прочитати обов'язково.docx» у корені кожної групи)
+  (опис і пояснення дефекту — «Прочитати обов'язково.docx» у корені DST, make_root_readme_docx.py)
 
 Належність зразка (тканина + приклад) до групи береться з уже відсортованого Fig7
 (SRC\Fig7\png\<алгоритм>\<група>\...) — тобто з фактичної перевірки порожніх елементів.
@@ -28,7 +28,6 @@ DST = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else
 GROUPS = ['Відсутні вхідні канали', 'Усі вхідні канали']
 TISSUE = {'heart': 'Серце', 'brain': 'Мозг', 'muscle': 'Мяз живота'}
 NAME = re.compile(r'^Fig\d\.(?:f\d\d-f\d\d|mueller)\.([^.]+)\.(\w+)\.zrazok(\d+)\.')
-README = "Прочитати обов'язково.docx"
 
 
 def group_map():
@@ -98,9 +97,6 @@ def main():
         print(f'  {k[0]} \\ {k[1]}: {n[k]} PNG')
     for g in GROUPS:
         gdir = DST / g
-        rd = next((SRC / 'Fig7' / 'png').glob(f'*/{g}/{README}'), None)
-        if rd:
-            shutil.copy2(rd, gdir / README)
         for figdir in sorted(p for p in gdir.iterdir() if p.is_dir()):
             print(f'\n=== {g} \\ {figdir.name}: Word ===', flush=True)
             subprocess.run([sys.executable, str(HERE / 'make_figures_docx.py'), str(figdir)], check=True)
