@@ -67,7 +67,7 @@ S.apply(ax);
 % джерело формул, що й у viz_stats_table.m (текстовий файл поряд), щоб
 % цифри на картинці й у .txt завжди збігались.
 [mu, sd, sk, ku] = tp_moments(v, isPhase);
-txt = sprintf('mean = %.4g\nstd  = %.4g\nskew = %.4g\nkurt = %.4g', mu, sd, sk, ku);
+txt = sprintf('mean = %.4g\nstd  = %.4g\nskew = %.4g\nexkurt = %.4g', mu, sd, sk, ku);
 text(ax, 0.97,0.97, txt, 'Units','normalized','VerticalAlignment','top', ...
      'HorizontalAlignment','right','FontName','Consolas','FontSize',9, ...
      'Color',S.ink,'BackgroundColor','w','EdgeColor',[0.6 0.6 0.6],'Margin',3);

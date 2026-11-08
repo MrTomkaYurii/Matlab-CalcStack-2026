@@ -23,15 +23,13 @@ addpath(here, fullfile(here,'config'), genpath(fullfile(here,'core')), ...
     fullfile(here,'paper_figures'), fullfile(here,'paper_figures','common'), fullfile(here,'tests'), ...
     fullfile(here,'analysis_stats'));
 oldVis = get(groot, 'DefaultFigureVisible');
-set(groot, 'DefaultFigureVisible', 'off');           % рисунки не показуються, лише зберігаються
-cleanup = onCleanup(@() set(groot, 'DefaultFigureVisible', oldVis));
-
+set(groot, 'DefaultFigureVisible', 'off');           % рисунки не показуються 
 logFile = fullfile('C:\August 2026-Results', ['overnight_' char(datetime('now','Format','yyyyMMdd_HHmm')) '.log']);
 diary(logFile);
 diaryOff = onCleanup(@() diary('off'));
+    '1. Тести формул',                      @() test_recalc_formulas(),          true
 
 stages = {
-    '1. Тести формул',                      @() test_recalc_formulas(),          true
     '2. Звірка GPU/CPU',                    @() run_Recalc_August_GPU(true),     true
     '3. Повний перерахунок result.mat',     @() run_Recalc_August_GPU(),         true
     '4. Рисунки статті + таблиці Z',        @() run_all_figures(),               false   % вікна FIG.phase (01 і 06)

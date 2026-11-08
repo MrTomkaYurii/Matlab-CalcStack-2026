@@ -13,7 +13,7 @@ N = size(deltaRef,1);
 ax1 = subplot(1,2,1);
 im = imagesc(ax1, 1:N, 1:N, deltaRef);
 set(ax1,'YDir','normal'); axis(ax1,'image');
-colormap(ax1, 'hsv'); caxis(ax1, [0 2*pi]);
+colormap(ax1, cet_c6(256)); caxis(ax1, [0 2*pi]);
 cb = colorbar(ax1); cb.Label.String = '\delta_{ref} = arg(E_y) - arg(E_x)  (rad)';
 cb.Ticks = [0 pi/2 pi 3*pi/2 2*pi];
 cb.TickLabels = {'0','\pi/2','\pi','3\pi/2','2\pi'};

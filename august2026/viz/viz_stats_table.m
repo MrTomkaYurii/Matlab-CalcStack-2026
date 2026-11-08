@@ -22,9 +22,11 @@ ttl = strrep(ttl, '\Delta', 'd');
 fid = fopen(outFile, 'w', 'n', 'UTF-8');
 fprintf(fid, 'Статистичні моменти: %s\n', ttl);
 fprintf(fid, '=================================================================\n\n');
-fprintf(fid, '%-12s %10s %12s %10s %10s %10s\n', 'Величина', 'N', 'mean', 'std', 'skew', 'kurt');
+fprintf(fid, '%-12s %10s %12s %10s %10s %10s\n', 'Величина', 'N', 'mean', 'std', 'skew', 'exkurt');
 fprintf(fid, '%s\n', repmat('-', 1, 66));
 fprintf(fid, '%-12s %10d %12.6g %10.4g %10.4g %10.4g\n', '|f|',       nM, muM, sdM, skM, kuM);
 fprintf(fid, '%-12s %10d %12.6g %10.4g %10.4g %10.4g\n', 'Arg [rad]', nA, muA, sdA, skA, kuA);
+fprintf(fid, '\nexkurt: |f| — надлишковий ексцес = куртозис - 3 (норма 0);\n');
+fprintf(fid, '        Arg — круговий ексцес Фішера (кругові моменти, tp_moments).\n');
 fclose(fid);
 end

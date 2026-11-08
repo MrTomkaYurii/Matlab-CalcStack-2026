@@ -5,3 +5,7 @@ final_combined_structure.mat
 
 # MATLAB autosave files
 *.asv
+
+# Python cache
+__pycache__/
+*.pyc

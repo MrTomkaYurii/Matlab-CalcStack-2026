@@ -200,8 +200,9 @@ FIG.fig07 = struct('samples',{def.samples}, 'examples',{def.examples}, ...
     %   підтеки. FIG.color.modes задає перелік.
     FIG.color.modes = {'color'};   % 'gray' вимкнено: білий NaN збігався з білим (pi / max) у ЧБ-шкалах
     % Аргумент — ЦИКЛІЧНА палітра (рецензія 2: 0 і 2pi — та сама фаза, без
-    % штучної межі в тканині): hsv у кольорі, cyclic_gray (чорн.-біл.-чорн.) у ЧБ.
-    FIG.color.maps.color = struct('mod','jet',  'arg','hsv');           % модуль — jet (школа Ушенка)
+    % штучної межі в тканині): CET-C6 у кольорі (рівномірна за сприйняттям,
+    % без хибних смуг hsv; core/cet_c6.m), cyclic_gray (чорн.-біл.-чорн.) у ЧБ.
+    FIG.color.maps.color = struct('mod','jet',  'arg','cet_c6');        % модуль — jet (школа Ушенка)
     FIG.color.maps.gray  = struct('mod','gray', 'arg','cyclic_gray');   % ЧБ (друк / colour-safe)
     FIG.color.argClim    = [0 2*pi];   % межі colorbar-а аргументу: [0 2*pi] (аргумент зводиться mod 2pi) або [-pi pi]
     FIG.color.modClipPct = 2.5;        % відсікає довгий хвіст рідкісних викидів (верхні 2.5%), фокусуючи шкалу на значущому діапазоні (OX до ~3)

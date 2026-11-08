@@ -1,4 +1,4 @@
-function run_all_figures(FIG)
+ function run_all_figures(FIG)
 % RUN_ALL_FIGURES  Пакетна обробка: усі рисунки у статтю + таблиці моментів.
 %   Зовнішня точка входу пакета august2026\paper_figures.
 %
