@@ -19,6 +19,13 @@ function n = make_fig_article(figTag, scope)
 %   Вивід  : <outRoot>\FigN\png\<variant>\FigN.f33-f44.OX.heart.zrazok1.phase01.0-2pi.png
 %            + Word-файли в <outRoot>\FigN\ (make_figures_docx.py; для Fig1 ще стат-моменти)
 
+if nargin >= 1 && strcmp(figTag, 'api')       % доступ до побудови панелей для інших пакетів
+    n = struct('panels',@panels, 'blank',@blank, 'pick_profiles',@pick_profiles, ...  % (2026-11-15-bloks-of-pictures)
+        'masked_acf_psd',@masked_acf_psd, 'attach_quality',@attach_quality, ...
+        'pooled_limits',@pooled_limits, 'cline',@cline, 'ticks_lab',@ticks_lab, ...
+        'nice_ticks',@nice_ticks, 'pi_labels',@pi_labels);
+    return;
+end
 here = fileparts(mfilename('fullpath'));
 addpath(here, fullfile(fileparts(here), 'common'), fileparts(here), ...
         fullfile(fileparts(fileparts(here)), 'core'));
