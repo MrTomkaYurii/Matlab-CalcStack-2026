@@ -58,29 +58,30 @@ def walk(fid, parts):
 
 
 def plan():
-    todo = []
+    """Генератор (id, шлях): видає кожен result.mat одразу, як знайде — скачування починається без очікування."""
+    print('Читаю теки на Диску...', flush=True)
     root = children(ROOT_ID)
     for t in TISSUES:
         if t not in root:
-            print(f'  ! немає теки {t}'); continue
+            print(f'  ! немає теки {t}', flush=True); continue
         tex = children(root[t])
         for ex in EXAMPLES:
             if ex not in tex:
-                print(f'  ! немає {t}\\{ex}'); continue
+                print(f'  ! немає {t}\\{ex}', flush=True); continue
             ph = children(tex[ex])
             for pk in PHASES:
                 name = next((n for n in ph if n.startswith(pk)), None)
                 if not name:
-                    print(f'  ! немає {t}\\{ex}\\{pk}*'); continue
+                    print(f'  ! немає {t}\\{ex}\\{pk}*', flush=True); continue
                 for leaf in LEAVES:
+                    rel = pathlib.Path(t, ex, name, *leaf, 'result.mat')
+                    print(f'  шукаю {rel} ...', flush=True)
                     d = walk(ph[name], leaf)
                     f = children(d).get('result.mat') if d else None
-                    rel = pathlib.Path(t, ex, name, *leaf, 'result.mat')
                     if f:
-                        todo.append((f, rel))
+                        yield f, rel
                     else:
-                        print(f'  ! немає {rel}')
-    return todo
+                        print(f'  ! немає {rel}', flush=True)
 
 
 def download(fid, dst):
@@ -103,24 +104,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--dry', action='store_true')
     a = ap.parse_args()
-    todo = plan()
-    print(f'Знайдено {len(todo)} result.mat')
-    if a.dry:
-        for _, rel in todo:
-            print('  ', rel)
-        return
-    fail = 0
-    for i, (fid, rel) in enumerate(todo, 1):
+    print(f'Куди: {OUT}', flush=True)
+    n = fail = 0
+    for fid, rel in plan():
+        n += 1
         dst = OUT / rel
+        if a.dry:
+            print(f'[{n}] знайдено {rel}', flush=True); continue
         if dst.is_file() and dst.stat().st_size > 0:
-            print(f'[{i}/{len(todo)}] є     {rel}'); continue
+            print(f'[{n}] вже є   {rel}', flush=True); continue
         try:
             download(fid, dst)
-            print(f'[{i}/{len(todo)}] ok    {rel}  ({dst.stat().st_size / 1e6:.1f} МБ)', flush=True)
+            print(f'[{n}] ok      {rel}  ({dst.stat().st_size / 1e6:.1f} МБ)', flush=True)
         except Exception as e:                       # noqa: BLE001
             fail += 1
-            print(f'[{i}/{len(todo)}] FAIL  {rel}: {e}', flush=True)
-    print(f'Готово: {len(todo) - fail} з {len(todo)} у {OUT}')
+            print(f'[{n}] FAIL    {rel}: {e}', flush=True)
+    print(f'Готово: {n - fail} з {n} у {OUT}')
     sys.exit(1 if fail else 0)
 
 
