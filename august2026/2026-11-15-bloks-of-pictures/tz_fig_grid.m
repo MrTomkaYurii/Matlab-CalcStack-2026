@@ -50,8 +50,8 @@ for c = 1:nc
     [T2, B2] = api.panels(Pk, M, comp, tex, kind, Lk.(comp), A, FIG, DD{c}.ax);
     if strcmp(kind, 'acf')
         Wl = Lk.(comp);
-        s = tick_step(0.85 * Wl);                 % у 4 колонках поле вужче — поділки ближче до країв,
-        [T2.xt, T2.xtl] = api.ticks_lab([-s 0 s]);  % щоб «-10», «0», «10» не злипались
+        st = tick_step(0.85 * Wl);                % у 4 колонках поле вужче — поділки ближче до країв,
+        [T2.xt, T2.xtl] = api.ticks_lab([-st 0 st]);  % щоб «-10», «0», «10» не злипались
         [T2.yt, T2.ytl] = deal(T2.xt, T2.xtl);  [B2.xt, B2.xtl] = deal(T2.xt, T2.xtl);
         if Pk.quality.ok
             kc = abs(Pk.cutLagY) <= Wl;
