@@ -59,7 +59,7 @@ for bi = 1:numel(T.blocks)
     rows = {};  cap = {};
 
     % ---------------- Рис.1–3: усі 16 елементів
-    d16 = fullfile(bdir, 'Рис.1-3 (усі 16 елементів)');
+    d16 = fullfile(bdir, sprintf('Блок %s.1 - %s', b.id, T.kinds(1).name));   % як у ТЗ: Рис.1–3 входять у Блок N.1
     spec16 = {1, 'XY', b.win; 2, 'OY', 2; 3, 'OY', b.win};
     for i = 1:3
         [no, algo, w] = spec16{i, :};
@@ -79,7 +79,7 @@ for bi = 1:numel(T.blocks)
     for k = 1:numel(T.kinds)
         K = T.kinds(k);
         sub = sprintf('%s.%d', b.id, k);
-        sdir = fullfile(bdir, sprintf('%s %s', sub, K.name));
+        sdir = fullfile(bdir, sprintf('Блок %s - %s', sub, K.name));
         for no = 4:8
             cols = grid_cols(b, no);
             try
