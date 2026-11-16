@@ -122,10 +122,14 @@ if isfield(p,'inset') && ~isempty(p.inset)
     ix = max(1, cxp - floor(nSrc/2)) + (0:nSrc-1);  iy = max(1, cyp - floor(nSrc/2)) + (0:nSrc-1);
     ix = ix(ix <= nx);  iy = iy(iy <= ny);
     img(ax, mx + S - k, my, k, k, to_rgb(flipud(p.img(iy, ix)), p.lim, p.cmap, A.nanColor));
-    frame(ax, mx + S - k, my, k, k, [0 0 0], A.lineMM);
+    fc = [0 0 0];  sc = A.insetSrcColor;                % колір рамки вставки й квадратика-джерела
+    if isfield(A, 'insetFrameColor') && isfield(A.insetFrameColor, p.inset)   % необов'язково, окремо mod / arg
+        fc = A.insetFrameColor.(p.inset);  sc = fc;
+    end
+    frame(ax, mx + S - k, my, k, k, fc, A.lineMM);
     Xp = @(v) mx + v / nx * S;  Yp = @(v) my + S - v / ny * S;      % квадратик — звідки взято фрагмент
     frame(ax, Xp(ix(1)-1), Yp(iy(end)), Xp(ix(end)) - Xp(ix(1)-1), Yp(iy(1)-1) - Yp(iy(end)), ...
-        A.insetSrcColor, A.lineMM);
+        sc, A.lineMM);
     txt(ax, A, mx + S - k + 0.4, my + k - 0.4, sprintf('\\times%d', A.insetZoom), A.insetLabelPt, 'left', ...
         'FontWeight','bold', 'Color', A.insetLabelColor.(p.inset));
 end
