@@ -17,5 +17,6 @@ A.letterH = 0.6 + fl;
 A.histT   = 1.3 * fs;
 A.histB   = A.tick + A.pad + fs + 0.6 + 1.2*fs;
 A.histH   = 18;      % трохи вище, ніж у статті (16), під більший кегль
-A.acfYColor = [0.85 0.35 0.10];   % переріз АКФ по Δy (по Δx — A.curveColor)
+A.insetLabelColor = struct('mod', [0 0 0], 'arg', [0 0 0]);   % «×4» — чорним усюди
+A.acfYColor =[0.85 0.35 0.10];   % переріз АКФ по Δy (по Δx — A.curveColor)
 end

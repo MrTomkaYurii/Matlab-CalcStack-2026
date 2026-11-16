@@ -9,14 +9,12 @@ function run_tz_blocks(ids, opts)
 %       run_tz_blocks({}, struct('saveRoot','D:\...\Розрахунки - Двот. елем. ММ', 'out','D:\...'))
 %
 %   Вивід (T.out):
-%     Блок N - <тканина> (eA-eB)\
-%       Блок N.1 - АКФ\                       Рис1.mod/.arg … Рис3.mod/.arg, Рис4 … Рис8  (+ .stats.csv)
-%       Блок N.2 - Спектри потужності\        Рис4 … Рис8
-%       Блок N.3 - Вейвлети (a = 10, a = 55)\ Рис4 … Рис8
-%       Блок N.4 - Скелетони\                 Рис4 … Рис8
-%       Рисунки_Блок N.docx           усі рисунки блоку з підписами за ТЗ
-%       Стат-моменти_Блок N.docx/.csv модулі, аргументи (КРУГОВІ), ортогональні АКФ,
-%                                     спектри, вейвлет-коефіцієнти на двох масштабах, скелетони
+%     Блок N.1\   Рис1.mod/.arg … Рис3.mod/.arg, Рис4 … Рис8 (АКФ)
+%     Блок N.2\   Рис4 … Рис8 (спектри потужності)
+%     Блок N.3\   Рис4 … Рис8 (вейвлети, a = 10 і a = 55)
+%     Блок N.4\   Рис4 … Рис8 (скелетони)
+%     у кожному:  Рисунки_Блок N.k.docx, Стат-моменти_Блок N.k.docx (Arg — кругові),
+%                 _службові файли\ (CSV)
 %   Журнал: T.out\run_tz_blocks.log. Готові PNG пропускаються — прогін можна перезапускати.
 
 here = fileparts(mfilename('fullpath'));
@@ -53,51 +51,49 @@ for bi = 1:numel(T.blocks)
     end
     t1 = tic;
     [e1, e2] = b.elems{:};
-    bdir = fullfile(T.out, sprintf('Блок %s - %s (%s-%s)', b.id, b.name, e1, e2));
     fprintf('\n=== Блок %s: %s %s, %s / %s, вікно 0–%gπ ===\n', b.id, b.sample, ...
         strjoin([{b.main} b.others], ','), e1, e2, b.win);
     if ~isempty(b.note); fprintf('  ! %s\n', b.note); end
-    rows = {};  cap = {};
 
-    % ---------------- Рис.1–3: усі 16 елементів
-    d16 = fullfile(bdir, sprintf('Блок %s.1 - %s', b.id, T.kinds(1).name));   % як у ТЗ: Рис.1–3 входять у Блок N.1
-    spec16 = {1, 'XY', b.win; 2, 'OY', 2; 3, 'OY', b.win};
-    for i = 1:3
-        [no, algo, w] = spec16{i, :};
-        try
-            [r, files] = tz_fig_all16(FIG, A, b, no, algo, w, d16, T);
-            rows = [rows; r]; %#ok<AGROW>
-            for c = {'mod','arg'}
-                cap(end+1, :) = {rel(bdir, files{strcmp({'mod','arg'}, c{1})}), ...
-                    caption16(b, no, algo, w, c{1})}; %#ok<AGROW>
-            end
-        catch ME
-            fprintf(2, '  [fail] Рис.%d : %s (%s:%d)\n', no, ME.message, ME.stack(1).name, ME.stack(1).line);
-        end
-    end
-
-    % ---------------- Рис.4–8: за підблоками N.1–N.4
+    % як у ТЗ: окрема тека на кожен «Блок N.k»; Рис.1–3 — лише в Блок N.1, Рис.4–8 — у кожному
     for k = 1:numel(T.kinds)
         K = T.kinds(k);
         sub = sprintf('%s.%d', b.id, k);
-        sdir = fullfile(bdir, sprintf('Блок %s - %s', sub, K.name));
+        sdir = fullfile(T.out, sprintf('Блок %s', sub));
+        rows = {};  cap = {};
+        if k == 1
+            spec16 = {1, 'XY', b.win; 2, 'OY', 2; 3, 'OY', b.win};
+            for i = 1:3
+                [no, algo, w] = spec16{i, :};
+                try
+                    [r, files] = tz_fig_all16(FIG, A, b, no, algo, w, sdir, T);
+                    rows = [rows; r]; %#ok<AGROW>
+                    for c = 1:2
+                        cmp = {'mod','arg'};
+                        cap(end+1, :) = {rel(sdir, files{c}), caption16(b, no, algo, w, cmp{c})}; %#ok<AGROW>
+                    end
+                catch ME
+                    fprintf(2, '  [fail] %s Рис.%d : %s (%s:%d)\n', sub, no, ME.message, ME.stack(1).name, ME.stack(1).line);
+                end
+            end
+        end
         for no = 4:8
             cols = grid_cols(b, no);
             try
                 [r, f] = tz_fig_grid(FIG, A, b, no, sub, K.key, cols, sdir, T);
                 rows = [rows; r]; %#ok<AGROW>
-                cap(end+1, :) = {rel(bdir, f), caption_grid(b, no, cols, K.key, sub, FIG)}; %#ok<AGROW>
+                cap(end+1, :) = {rel(sdir, f), caption_grid(b, no, cols, K.key, sub, FIG)}; %#ok<AGROW>
             catch ME
                 fprintf(2, '  [fail] %s Рис.%d : %s (%s:%d)\n', sub, no, ME.message, ME.stack(1).name, ME.stack(1).line);
             end
         end
-    end
-
-    tz_write_csv(fullfile(bdir, sprintf('Стат-моменти_Блок %s.csv', b.id)), rows);
-    writecell([{'file','caption'}; cap], fullfile(bdir, 'captions.csv'), 'Encoding','UTF-8');
-    if T.docx
-        st = system(sprintf('python "%s" "%s" "%s"', fullfile(here, 'make_tz_docx.py'), bdir, b.note));
-        if st ~= 0; fprintf(2, '  [docx] помилка make_tz_docx.py\n'); end
+        aux = fullfile(sdir, '_службові файли');
+        tz_write_csv(fullfile(aux, sprintf('Стат-моменти_Блок %s.csv', sub)), rows);
+        writecell([{'file','caption'}; cap], fullfile(aux, 'captions.csv'), 'Encoding','UTF-8');
+        if T.docx
+            st = system(sprintf('python "%s" "%s" "%s"', fullfile(here, 'make_tz_docx.py'), sdir, b.note));
+            if st ~= 0; fprintf(2, '  [docx] помилка make_tz_docx.py (%s)\n', sub); end
+        end
     end
     fprintf('=== Блок %s: %.0f хв ===\n', b.id, toc(t1)/60);
 end

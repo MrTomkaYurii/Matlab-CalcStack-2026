@@ -30,6 +30,7 @@ from PIL import Image
 BDIR = pathlib.Path(sys.argv[1])
 NOTE = sys.argv[2] if len(sys.argv) > 2 else ''
 BID = re.match(r'Блок (\S+)', BDIR.name).group(1)
+AUX = BDIR / '_службові файли' if (BDIR / '_службові файли').is_dir() else BDIR
 DASH = '—'
 SMALL = 1e-5
 SUBNAME = {'1': 'АКФ', '2': 'спектри потужності', '3': 'вейвлети', '4': 'скелетони'}
@@ -94,7 +95,7 @@ def new_doc(landscape=False):
 
 
 def figures_doc():
-    caps = read_csv(BDIR / 'captions.csv')
+    caps = read_csv(AUX / 'captions.csv')
     doc = new_doc()
     para(doc, f'Блок {BID} — рисунки за ТЗ «Нові рисунки»', bold=True, size=14)
     para(doc, f'{BDIR.name}.  Сформовано {datetime.date.today():%d.%m.%Y}.', size=9)
@@ -139,7 +140,7 @@ def table(doc, rows, fill):
 
 
 def stats_doc():
-    rows = read_csv(BDIR / f'Стат-моменти_Блок {BID}.csv')
+    rows = read_csv(AUX / f'Стат-моменти_Блок {BID}.csv')
     doc = new_doc(landscape=True)
     para(doc, f'Стат-моменти — Блок {BID}', bold=True, size=14)
     para(doc, f'{BDIR.name}.  Сформовано {datetime.date.today():%d.%m.%Y}.', size=9)
