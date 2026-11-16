@@ -49,6 +49,7 @@ for c = 1:nc
     [T1, B1] = api.panels(Pr, M, comp, tex, 'raw', Lr.(comp), A, FIG, DD{c}.ax);
     [T2, B2] = api.panels(Pk, M, comp, tex, kind, Lk.(comp), A, FIG, DD{c}.ax);
     if strcmp(kind, 'acf')
+        T2.contour = [];                          % без чорного контуру півширини на 2D-АКФ
         Wl = Lk.(comp);
         st = tick_step(0.85 * Wl);                % у 4 колонках поле вужче — поділки ближче до країв,
         [T2.xt, T2.xtl] = api.ticks_lab([-st 0 st]);  % щоб «-10», «0», «10» не злипались

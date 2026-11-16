@@ -6,6 +6,7 @@ function run_tz_blocks(ids, opts)
 %       run_tz_blocks                      % усі увімкнені блоки (cfg_tz_blocks: .enabled)
 %       run_tz_blocks({'1','3'})           % лише ці блоки (у т.ч. вимкнені — явно названі)
 %       run_tz_blocks({'1'}, struct('overwrite',true))
+%       run_tz_blocks({'1'}, struct('subs', 1))      % лише Блок 1.1
 %       run_tz_blocks({}, struct('saveRoot','D:\...\Розрахунки - Двот. елем. ММ', 'out','D:\...'))
 %
 %   Вивід (T.out):
@@ -56,7 +57,9 @@ for bi = 1:numel(T.blocks)
     if ~isempty(b.note); fprintf('  ! %s\n', b.note); end
 
     % як у ТЗ: окрема тека на кожен «Блок N.k»; Рис.1–3 — лише в Блок N.1, Рис.4–8 — у кожному
-    for k = 1:numel(T.kinds)
+    subs = 1:numel(T.kinds);
+    if isfield(T, 'subs') && ~isempty(T.subs); subs = T.subs; end   % напр. struct('subs', 1) — лише Блок N.1
+    for k = subs
         K = T.kinds(k);
         sub = sprintf('%s.%d', b.id, k);
         sdir = fullfile(T.out, sprintf('Блок %s', b.id), sprintf('Блок %s', sub));   % Блок 1\Блок 1.1 ...

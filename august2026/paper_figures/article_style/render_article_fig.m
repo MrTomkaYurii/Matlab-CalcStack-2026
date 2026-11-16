@@ -126,12 +126,16 @@ if isfield(p,'inset') && ~isempty(p.inset)
     if isfield(A, 'insetFrameColor') && isfield(A.insetFrameColor, p.inset)   % необов'язково, окремо mod / arg
         fc = A.insetFrameColor.(p.inset);  sc = fc;
     end
+    lc = A.insetLabelColor.(p.inset);
+    if isfield(A, 'insetNaNSwitch') && mean(~isfinite(p.img(:))) > A.insetNaNSwitch
+        fc = [0 0 0];  sc = fc;  lc = fc;            % карта з «дірками» (білі NaN) — білі рамки загубляться
+    end
     frame(ax, mx + S - k, my, k, k, fc, A.lineMM);
     Xp = @(v) mx + v / nx * S;  Yp = @(v) my + S - v / ny * S;      % квадратик — звідки взято фрагмент
     frame(ax, Xp(ix(1)-1), Yp(iy(end)), Xp(ix(end)) - Xp(ix(1)-1), Yp(iy(1)-1) - Yp(iy(end)), ...
         sc, A.lineMM);
     txt(ax, A, mx + S - k + 0.4, my + k - 0.4, sprintf('\\times%d', A.insetZoom), A.insetLabelPt, 'left', ...
-        'FontWeight','bold', 'Color', A.insetLabelColor.(p.inset));
+        'FontWeight','bold', 'Color', lc);
 end
 frame(ax, mx, my, S, S, [0 0 0], A.lineMM);
 note(ax, A, mx + S/2, my + S/2, p);
