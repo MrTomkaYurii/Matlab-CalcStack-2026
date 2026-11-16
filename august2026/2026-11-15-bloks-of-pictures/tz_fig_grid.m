@@ -12,7 +12,7 @@ function [rows, file] = tz_fig_grid(FIG, A, b, figNo, sub, kind, cols, outDir, T
 
 api = make_fig_article('api');
 file = fullfile(outDir, sprintf('Рис%d.png', figNo));
-csvf = fullfile(outDir, sprintf('Рис%d.stats.csv', figNo));
+csvf = fullfile(outDir, '_службові файли', sprintf('Рис%d.stats.csv', figNo));
 rows = {};
 if ~T.overwrite && isfile(file) && isfile(csvf)
     rows = readcell(csvf, 'Encoding','UTF-8');  rows = rows(2:end, :);

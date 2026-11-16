@@ -9,7 +9,7 @@ api = make_fig_article('api');
 rows = {};
 base = fullfile(outDir, sprintf('Рис%d', figNo));
 files = {[base '.mod.png'], [base '.arg.png']};
-csvf  = [base '.stats.csv'];
+csvf  = fullfile(outDir, '_службові файли', sprintf('Рис%d.stats.csv', figNo));
 if ~T.overwrite && all(cellfun(@isfile, [files {csvf}]))
     rows = readcell(csvf, 'Encoding','UTF-8');  rows = rows(2:end, :);
     fprintf('  [є] %s\n', base);  return;
@@ -54,8 +54,9 @@ for comp = {'mod','arg'}
                 P.ct = A.argTicks * pi;  P.ctl = api.pi_labels(A.argTicks);
                 rows(end+1, :) = tz_stats(m1, 'карта Arg (кругові)', mod(M, 2*pi), true); %#ok<AGROW>
             end
+            P.inset = comp{1};                        % вставка ×4, як на картах Рис.4–8 / Fig1 статті
             if ~any(isfinite(M(:)))
-                P.img = [];  P.note = 'порожній|канал';
+                P.img = [];  P.inset = '';  P.note = 'порожній|канал';
             end
             L = L + 1;  P.letter = char('a' + L - 1);
             R.rows{i}{k} = P;
