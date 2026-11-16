@@ -139,6 +139,58 @@ def table(doc, rows, fill):
             row.cells[j].width = Cm(w)
 
 
+def formulas(doc):
+    """Формули — справжні рівняння Word (OMML, omml.py)."""
+    from omml import math, r, f, sup, sub, subsup, nary, rad, d
+    K1 = lambda: f(r('1', True), r('K'))
+    S = lambda body: nary('∑', [r('k'), r('=1', True)], r('K'), body)
+    xk = lambda: sub(r('x'), r('k'))
+    Z = lambda n: sub(r('Z'), r(str(n), True))
+    st = lambda: d(f([xk(), r('−'), Z(1)], Z(2)))
+    para(doc, 'Формули', bold=True, size=11, before=6)
+    para(doc, 'x_k, k = 1…K — значення розподілу (NaN відкинуто).', size=10)
+
+    para(doc, 'Лінійні моменти (|f|, АКФ, log₁₀ PSD, |W|, скелетон)', bold=True, size=10, before=4)
+    math(doc, Z(1), r('='), K1(), S(xk()))
+    math(doc, Z(2), r('='), rad([K1(), S(sup(d([xk(), r('−'), Z(1)]), r('2', True)))]))
+    math(doc, Z(3), r('='), K1(), S(sup(st(), r('3', True))))
+    math(doc, Z(4), r('='), K1(), S(sup(st(), r('4', True))), r('−3', True))
+
+    para(doc, 'Кругові моменти аргументу (φ_k = Arg f, рад)', bold=True, size=10, before=4)
+    e = lambda p: sup(r('e', True), p)
+    math(doc, sub(r('M'), r('1', True)), r('='), K1(), S(e([r('i'), sub(r('φ'), r('k'))])),
+         r('='), r('R'), e([r('i'), r('μ')]))
+    math(doc, sub(r('M'), r('2', True)), r('='), K1(), S(e([r('2', True), r('i'), sub(r('φ'), r('k'))])),
+         r('='), sub(r('R'), r('2', True)), e([r('i'), sub(r('μ'), r('2', True))]))
+    math(doc, Z(1), r('='), r('μ'), r('∈'), d([r('0, 2π', True)], '[', ')'), r(',     ', True),
+         Z(2), r('='), rad([r('−2 ln', True), r('R')]))
+    dmu = lambda: d([sub(r('μ'), r('2', True)), r('−2', True), r('μ')])
+    math(doc, Z(3), r('='), f([sub(r('R'), r('2', True)), r(' sin', True), dmu()],
+                              sup(d([r('1−', True), r('R')]), r('3/2', True))))
+    math(doc, Z(4), r('='), f([sub(r('R'), r('2', True)), r(' cos', True), dmu(), r('−', True),
+                               sup(r('R'), r('4', True))],
+                              sup(d([r('1−', True), r('R')]), r('2', True))))
+
+    para(doc, 'АКФ, спектр, вейвлет', bold=True, size=10, before=4)
+    D = lambda: r('Δ')
+    math(doc, r('G'), d([D(), r('x'), r(','), D(), r('y')]), r('='),
+         f(r('1', True), r('N(Δ)', True)), nary('∑', r('r'), None,
+           [d([r('u(r)', True), r('−', True), r('ū', True)]), d([r('u(r+Δ)', True), r('−', True), r('ū', True)])]),
+         r(',    ', True), r('K'), r('='), f(r('G(Δ)', True), r('G(0)', True)),
+         label='АКФ (лише пари справжніх точок):')
+    math(doc, r('K'), d([r('±L/2', True)]), r('=0.5', True), label='Повна ширина перерізу Δx / Δy:')
+    math(doc, r('S'), d([sub(r('k'), r('x')), r(','), sub(r('k'), r('y'))]), r('='),
+         d([r('ℱ{K}', True)], '|', '|'), r(',  показано  ', True), sub(r('log'), r('10', True)), r('S'),
+         label='Спектр потужності (Вінер–Хінчин, без k = 0):')
+    math(doc, r('W'), d([r('a, b', True)]), r('='), f(r('1', True), rad(r('a'))),
+         nary('∫', None, None, [r('x(t)', True), sup(r('ψ'), r('*', True)),
+                                d(f([r('t'), r('−', True), r('b')], r('a')))]), r('dt', True),
+         label='Вейвлет (Морле, 12 голосів на октаву; перерізи при a = 10 і a = 55):')
+    para(doc, 'Скелетон — |W| у локальних максимумах |W(a, b)| за b (WTMM).', size=10)
+    para(doc, 'Код: august2026\\core\\tp_moments.m (моменти), paper_figures\\common\\paper_prep.m (АКФ, спектр, вейвлет).',
+         size=9)
+
+
 def stats_doc():
     rows = read_csv(AUX / f'Стат-моменти_Блок {BID}.csv')
     doc = new_doc(landscape=True)
@@ -157,23 +209,7 @@ def stats_doc():
         '«—» — немає даних (порожній вхідний канал / замало точок у фазовому вікні) або |Z3|, |Z4| < 1e-5.',
     ]:
         doc.add_paragraph(s, style='List Bullet')
-    para(doc, 'Формули (x_k — K значень розподілу, NaN відкинуто)', bold=True, size=11, before=6)
-    for s in [
-        'Лінійні (|f|, АКФ, log10 PSD, |W|, скелетон):  Z1 = (1/K)·Σ x_k;   Z2 = √[(1/K)·Σ (x_k − Z1)²];   '
-        'Z3 = (1/K)·Σ ((x_k − Z1)/Z2)³;   Z4 = (1/K)·Σ ((x_k − Z1)/Z2)⁴ − 3.',
-        'Кругові (Arg f, φ_k у радіанах):  M1 = (1/K)·Σ e^{iφ_k} = R·e^{iμ};   M2 = (1/K)·Σ e^{2iφ_k} = R2·e^{iμ2};   '
-        'Z1 = μ ∈ [0, 2π);   Z2 = √(−2·ln R);   Z3 = R2·sin(μ2 − 2μ) / (1 − R)^{3/2};   '
-        'Z4 = (R2·cos(μ2 − 2μ) − R⁴) / (1 − R)².',
-        'АКФ: двовимірна автокореляція карти (лише пари справжніх точок), нормована на 1 у нулі; '
-        'перерізи Δx і Δy — рядок і стовпець через центр у показаному вікні лагів; '
-        'L — повна ширина перерізу на рівні 0.5.',
-        'Спектр потужності: |FFT(АКФ)| (теорема Вінера–Хінчина), без нульової частоти, у log10.',
-        'Вейвлет: CWT профілю карти (центральний рядок), вейвлет Морле (amor), 12 голосів на октаву; '
-        'перерізи |W(a, b)| уздовж b при a = 10 і a = 55.',
-        'Скелетон: |W| у локальних максимумах модуля вейвлет-перетворення (WTMM).',
-        'Код: august2026\\core\\tp_moments.m (моменти), paper_figures\\common\\paper_prep.m (АКФ, спектр, вейвлет).',
-    ]:
-        doc.add_paragraph(s, style='List Bullet')
+    formulas(doc)
     if NOTE:
         para(doc, 'Примітка до блоку: ' + NOTE, size=9, before=4)
 
