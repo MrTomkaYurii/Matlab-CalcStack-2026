@@ -9,10 +9,10 @@ function run_tz_blocks(ids, opts)
 %       run_tz_blocks({}, struct('saveRoot','D:\...\Розрахунки - Двот. елем. ММ', 'out','D:\...'))
 %
 %   Вивід (T.out):
-%     Блок N.1\   Рис1.mod/.arg … Рис3.mod/.arg, Рис4 … Рис8 (АКФ)
-%     Блок N.2\   Рис4 … Рис8 (спектри потужності)
-%     Блок N.3\   Рис4 … Рис8 (вейвлети, a = 10 і a = 55)
-%     Блок N.4\   Рис4 … Рис8 (скелетони)
+%     Блок N\Блок N.1\   Рис1.mod/.arg … Рис3.mod/.arg, Рис4 … Рис8 (АКФ)
+%     Блок N\Блок N.2\   Рис4 … Рис8 (спектри потужності)
+%     Блок N\Блок N.3\   Рис4 … Рис8 (вейвлети, a = 10 і a = 55)
+%     Блок N\Блок N.4\   Рис4 … Рис8 (скелетони)
 %     у кожному:  Рисунки_Блок N.k.docx, Стат-моменти_Блок N.k.docx (Arg — кругові),
 %                 _службові файли\ (CSV)
 %   Журнал: T.out\run_tz_blocks.log. Готові PNG пропускаються — прогін можна перезапускати.
@@ -59,7 +59,7 @@ for bi = 1:numel(T.blocks)
     for k = 1:numel(T.kinds)
         K = T.kinds(k);
         sub = sprintf('%s.%d', b.id, k);
-        sdir = fullfile(T.out, sprintf('Блок %s', sub));
+        sdir = fullfile(T.out, sprintf('Блок %s', b.id), sprintf('Блок %s', sub));   % Блок 1\Блок 1.1 ...
         rows = {};  cap = {};
         if k == 1
             spec16 = {1, 'XY', b.win; 2, 'OY', 2; 3, 'OY', b.win};
