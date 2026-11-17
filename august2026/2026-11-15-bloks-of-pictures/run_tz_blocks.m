@@ -107,8 +107,7 @@ end
 function s = block_dir(b)
 % «Блок 1 - М'яз 1, 2, 3 (f33, f44, зразки за ТЗ)» — у назві теки видно, з яких зразків блок
 ex = sort(str2double([{b.main} b.others]));
-s = sprintf('Блок %s - %s %s (%s, зразки за ТЗ)', b.id, b.name, strjoin(arrayfun(@num2str, ex, 'uni', 0), ', '), ...
-    strjoin(b.elems, ', '));
+s = sprintf('Блок %s - %s %s', b.id, b.name, strjoin(arrayfun(@num2str, ex, 'uni', 0), ', '));
 end
 
 function cols = grid_cols(b, no)
