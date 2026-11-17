@@ -50,6 +50,9 @@ for bi = 1:numel(T.blocks)
     elseif ~any(strcmp(ids, b.id))
         continue;
     end
+    if isfield(T, 'tissue') && ~isempty(T.tissue)     % інша тканина замість ТЗ: struct('tissue', {{'Мяз живота','М''яз'}})
+        b.sample = T.tissue{1};  b.name = T.tissue{2};  b.main = '1';  b.others = {'2','3'};  b.note = '';
+    end
     t1 = tic;
     [e1, e2] = b.elems{:};
     fprintf('\n=== Блок %s: %s %s, %s / %s, вікно 0–%gπ ===\n', b.id, b.sample, ...
