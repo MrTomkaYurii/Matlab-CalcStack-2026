@@ -62,7 +62,7 @@ for bi = 1:numel(T.blocks)
     for k = subs
         K = T.kinds(k);
         sub = sprintf('%s.%d', b.id, k);
-        sdir = fullfile(T.out, sprintf('Блок %s', b.id), sprintf('Блок %s', sub));   % Блок 1\Блок 1.1 ...
+        sdir = fullfile(T.out, block_dir(b), sprintf('Блок %s', sub));   % «Блок 1 - М'яз 1, 2, 3 (зразки за ТЗ)\Блок 1.1» ...
         rows = {};  cap = {};
         if k == 1
             spec16 = {1, 'XY', b.win; 2, 'OY', 2; 3, 'OY', b.win};
@@ -104,6 +104,13 @@ fprintf('\n=== Готово за %.1f хв ===\n', toc(t0)/60);
 end
 
 % =====================================================================
+function s = block_dir(b)
+% «Блок 1 - М'яз 1, 2, 3 (f33, f44, зразки за ТЗ)» — у назві теки видно, з яких зразків блок
+ex = sort(str2double([{b.main} b.others]));
+s = sprintf('Блок %s - %s %s (%s, зразки за ТЗ)', b.id, b.name, strjoin(arrayfun(@num2str, ex, 'uni', 0), ', '), ...
+    strjoin(b.elems, ', '));
+end
+
 function cols = grid_cols(b, no)
 [e1, e2] = b.elems{:};  m = b.main;  [o1, o2] = b.others{:};
 c = @(ex, algo, w, el, comp, tag) struct('example',ex, 'algo',algo, 'win',w, 'elem',el, 'comp',comp, 'tag',tag);
